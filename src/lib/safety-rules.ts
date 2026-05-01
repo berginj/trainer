@@ -290,3 +290,75 @@ export function buildBenchmarkConfidenceFlag(metric: Pick<MetricDefinition, "ben
     nextAction: "Display confidence context and prefer within-player trends."
   };
 }
+
+export function buildMissedWarmupAlert(input: {
+  missedWarmups: number;
+  threshold?: number;
+}): AlertDraft | null {
+  const threshold = input.threshold ?? 3;
+
+  if (input.missedWarmups < threshold) {
+    return null;
+  }
+
+  return {
+    severity: "yellow",
+    ruleCode: "missed_warmups",
+    reason: "Warm-up compliance has been missed repeatedly.",
+    nextAction: "Reinforce warm-up completion before sessions."
+  };
+}
+
+export function buildRoutineNonComplianceAlert(input: {
+  missedWeeks: number;
+  thresholdWeeks?: number;
+}): AlertDraft | null {
+  const thresholdWeeks = input.thresholdWeeks ?? 2;
+
+  if (input.missedWeeks < thresholdWeeks) {
+    return null;
+  }
+
+  return {
+    severity: "yellow",
+    ruleCode: "routine_noncompliance",
+    reason: "Routine non-compliance has persisted for multiple weeks.",
+    nextAction: "Reassign, simplify, or review the routine plan."
+  };
+}
+
+export function buildGrowthPlusSymptomAlert(input: {
+  heightIncreaseCm: number;
+  days: number;
+  painAny?: boolean;
+  performanceDrop?: boolean;
+}): AlertDraft | null {
+  const rapidGrowth = input.days > 0 && input.heightIncreaseCm / input.days >= 0.035;
+
+  if (!rapidGrowth || (!input.painAny && !input.performanceDrop)) {
+    return null;
+  }
+
+  return {
+    severity: "yellow",
+    ruleCode: "growth_plus_symptom",
+    reason: "Rapid recent growth is paired with pain or performance drop.",
+    nextAction: "Add growth context and avoid overinterpreting performance changes."
+  };
+}
+
+export function buildGoalResetDueFlag(input: {
+  dueDate: Date | null;
+  asOfDate: Date;
+}): AlertDraft | null {
+  if (!input.dueDate || input.dueDate > input.asOfDate) {
+    return null;
+  }
+
+  return {
+    severity: "blue",
+    ruleCode: "goal_reset_due",
+    reason: "A player goal is due for review.",
+    nextAction: "Review and update the goal."
+  };
+}

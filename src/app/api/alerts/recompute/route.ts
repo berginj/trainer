@@ -6,6 +6,7 @@ import { getPrisma } from "@/lib/db";
 import {
   buildBaselineMissingFlag,
   buildBenchmarkConfidenceFlag,
+  buildGoalResetDueFlag,
   buildMonthlyEvaluationDueFlag
 } from "@/lib/safety-rules";
 
@@ -26,7 +27,7 @@ export async function POST(request: NextRequest) {
   }
 
   const prisma = getPrisma();
-  const [evaluationCount, latestEvaluation, lowConfidenceMetrics] = await Promise.all([
+  const [evaluationCount, latestEvaluation, lowConfidenceMetrics, dueGoals] = await Promise.all([
     prisma.evaluation.count({
       where: {
         organizationId: parsed.data.organizationId,
@@ -45,6 +46,17 @@ export async function POST(request: NextRequest) {
         OR: [{ benchmarkPolicy: "local_only" }, { confidenceLevel: "weak" }]
       },
       take: 10
+    }),
+    prisma.goal.findMany({
+      where: {
+        organizationId: parsed.data.organizationId,
+        playerId: parsed.data.playerId,
+        status: "active",
+        dueDate: {
+          lte: parsed.data.asOfDate
+        }
+      },
+      take: 10
     })
   ]);
   const alertDrafts = [
@@ -53,10 +65,32 @@ export async function POST(request: NextRequest) {
       lastEvaluationDate: latestEvaluation?.date ?? null,
       asOfDate: parsed.data.asOfDate
     }),
-    ...lowConfidenceMetrics.map((metric) => buildBenchmarkConfidenceFlag(metric))
+    ...lowConfidenceMetrics.map((metric) => buildBenchmarkConfidenceFlag(metric)),
+    ...dueGoals.map((goal) =>
+      buildGoalResetDueFlag({
+        dueDate: goal.dueDate,
+        asOfDate: parsed.data.asOfDate
+      })
+    )
   ].filter((alert) => alert !== null);
+  const existingOpenAlerts = await prisma.alert.findMany({
+    where: {
+      organizationId: parsed.data.organizationId,
+      playerId: parsed.data.playerId,
+      status: "open",
+      sourceType: "alert_recompute",
+      ruleCode: {
+        in: alertDrafts.map((alert) => alert.ruleCode)
+      }
+    },
+    select: {
+      ruleCode: true
+    }
+  });
+  const existingRuleCodes = new Set(existingOpenAlerts.map((alert) => alert.ruleCode));
+  const newAlertDrafts = alertDrafts.filter((alert) => !existingRuleCodes.has(alert.ruleCode));
   const alerts = await Promise.all(
-    alertDrafts.map((alert) =>
+    newAlertDrafts.map((alert) =>
       prisma.alert.create({
         data: {
           organizationId: parsed.data.organizationId,
@@ -78,7 +112,8 @@ export async function POST(request: NextRequest) {
     entityType: "Player",
     entityId: parsed.data.playerId,
     metadata: {
-      alertCount: alerts.length
+      alertCount: alerts.length,
+      skippedDuplicateCount: alertDrafts.length - newAlertDrafts.length
     }
   });
 

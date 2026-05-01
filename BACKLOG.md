@@ -43,11 +43,11 @@ Status values:
 |---|---|---|
 | Workload-entry alert persistence | In Progress | Workload entry creation persists baseball daily-max and softball exposure alerts; baseball rest-window availability still needs schedule context. |
 | Pain routine suppression | Done | Baseball/softball routine assignment is blocked while relevant pain alerts are open. |
-| Missed warm-up alert | Todo | Repeated missed warm-up entries create yellow alert. |
-| Routine non-compliance alert | Todo | Two-week non-compliance creates yellow alert. |
-| Growth plus symptom alert | Todo | Rapid growth plus pain/performance drop creates yellow alert. |
-| Goal reset due flag | Todo | Due goals create blue informational flag. |
-| Duplicate alert control | Todo | Recompute avoids creating repeated open alerts for the same player/rule/source. |
+| Missed warm-up alert | In Progress | Rule function exists; persistence needs warm-up completion field/source data. |
+| Routine non-compliance alert | In Progress | Rule function exists; persistence needs scheduled routine compliance aggregation. |
+| Growth plus symptom alert | In Progress | Rule function exists; persistence needs height trend/performance-drop aggregation. |
+| Goal reset due flag | Done | Due goals create blue informational flags in recompute. |
+| Duplicate alert control | Done | Recompute avoids creating repeated open alerts for the same player/rule/source. |
 
 ## Remaining Data And Testing Work
 

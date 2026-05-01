@@ -4,9 +4,13 @@ import {
   buildBaseballPitchCountAlert,
   buildBaselineMissingFlag,
   buildBenchmarkConfidenceFlag,
+  buildGoalResetDueFlag,
+  buildGrowthPlusSymptomAlert,
+  buildMissedWarmupAlert,
   buildMonthlyEvaluationDueFlag,
   buildPainAlert,
   buildReadinessDropAlert,
+  buildRoutineNonComplianceAlert,
   buildSoftballExposureAlert,
   buildWorkloadSpikeAlert,
   canRenderBenchmark,
@@ -60,6 +64,36 @@ describe("expanded alert rules", () => {
       ruleCode: "low_confidence_benchmark"
     });
     expect(buildBenchmarkConfidenceFlag({ benchmarkPolicy: "hard_coded", confidenceLevel: "strong" })).toBeNull();
+  });
+
+  it("creates missed warmup and routine non-compliance alerts", () => {
+    expect(buildMissedWarmupAlert({ missedWarmups: 3 })).toMatchObject({ ruleCode: "missed_warmups" });
+    expect(buildMissedWarmupAlert({ missedWarmups: 2 })).toBeNull();
+    expect(buildRoutineNonComplianceAlert({ missedWeeks: 2 })).toMatchObject({ ruleCode: "routine_noncompliance" });
+    expect(buildRoutineNonComplianceAlert({ missedWeeks: 1 })).toBeNull();
+  });
+
+  it("creates growth plus symptom alerts only when both conditions exist", () => {
+    expect(buildGrowthPlusSymptomAlert({ heightIncreaseCm: 2, days: 30, painAny: true })).toMatchObject({
+      ruleCode: "growth_plus_symptom"
+    });
+    expect(buildGrowthPlusSymptomAlert({ heightIncreaseCm: 2, days: 30 })).toBeNull();
+    expect(buildGrowthPlusSymptomAlert({ heightIncreaseCm: 0.5, days: 30, painAny: true })).toBeNull();
+  });
+
+  it("creates goal reset due flags", () => {
+    expect(
+      buildGoalResetDueFlag({
+        dueDate: new Date("2026-04-01T00:00:00.000Z"),
+        asOfDate: new Date("2026-05-01T00:00:00.000Z")
+      })
+    ).toMatchObject({ severity: "blue", ruleCode: "goal_reset_due" });
+    expect(
+      buildGoalResetDueFlag({
+        dueDate: new Date("2026-06-01T00:00:00.000Z"),
+        asOfDate: new Date("2026-05-01T00:00:00.000Z")
+      })
+    ).toBeNull();
   });
 });
 
