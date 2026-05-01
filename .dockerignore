@@ -1,0 +1,11 @@
+node_modules
+.next
+.git
+.github
+coverage
+npm-debug.log*
+.env
+.env*.local
+README.md
+deep-research-report.md
+BUILD_DEPLOYMENT_PLAN.md

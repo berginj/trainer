@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f7f2e8;
+  --foreground: #17201a;
+  --panel: #fffaf0;
+  --panel-strong: #efe1c2;
+  --accent: #1f6f5b;
+  --accent-strong: #123f35;
+  --warning: #b65b16;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  background:
+    radial-gradient(circle at top left, rgba(31, 111, 91, 0.18), transparent 30rem),
+    linear-gradient(135deg, #f7f2e8 0%, #ead9b8 54%, #d7e2d4 100%);
+  color: var(--foreground);
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+* {
+  box-sizing: border-box;
+}

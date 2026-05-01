@@ -1,0 +1,645 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum OrganizationRole {
+  platform_admin
+  org_admin
+  league_admin
+  team_coach
+  assistant_coach
+  guardian
+  player
+  evaluator
+}
+
+enum Sport {
+  basketball
+  baseball
+  softball
+}
+
+enum AlertSeverity {
+  red
+  yellow
+  blue
+}
+
+enum MembershipStatus {
+  active
+  invited
+  suspended
+}
+
+enum ActiveStatus {
+  active
+  inactive
+  archived
+}
+
+enum ConsentType {
+  readiness
+  workload
+  reports
+  media
+}
+
+enum ConsentStatus {
+  granted
+  revoked
+  pending
+}
+
+enum SportScope {
+  universal
+  basketball
+  baseball
+  softball
+  multi
+}
+
+enum MetricDomain {
+  readiness
+  workload
+  physical
+  skill
+  movement
+  growth
+  safety
+}
+
+enum MetricValueType {
+  integer
+  decimal
+  percent
+  boolean
+  enum
+  rubric
+  text
+}
+
+enum CaptureDifficulty {
+  home_easy
+  practice_easy
+  simple_equipment
+  advanced_optional
+}
+
+enum BenchmarkPolicy {
+  hard_coded
+  admin_imported
+  local_only
+  within_player_only
+}
+
+enum ConfidenceLevel {
+  strong
+  moderate
+  consensus
+  weak
+}
+
+enum AlertStatus {
+  open
+  acknowledged
+  resolved
+}
+
+enum ReportType {
+  monthly_player
+  parent_weekly
+  coach_roster
+}
+
+model Organization {
+  id           String   @id @default(cuid())
+  name         String
+  timezone     String
+  featureFlags Json     @default("{}")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  alerts               Alert[]
+  auditEvents          AuditEvent[]
+  benchmarks           Benchmark[]
+  consents             ConsentRecord[]
+  evaluations          Evaluation[]
+  goals                Goal[]
+  measurements         Measurement[]
+  memberships          OrganizationMembership[]
+  metricDefinitions    MetricDefinition[]
+  players              Player[]
+  readinessChecks      ReadinessCheck[]
+  recommendations      Recommendation[]
+  reports              Report[]
+  routineAssignments   RoutineAssignment[]
+  routineCompletions   RoutineCompletion[]
+  routines             Routine[]
+  seasons              Season[]
+  teamMemberships      TeamMembership[]
+  teams                Team[]
+  workloadEntries      WorkloadEntry[]
+}
+
+model UserProfile {
+  id                 String   @id @default(cuid())
+  externalIdentityId String   @unique
+  email              String   @unique
+  displayName        String
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  alertCoachEscalations    Alert[]              @relation("AlertCoachEscalation")
+  alertGuardianEscalations Alert[]              @relation("AlertGuardianEscalation")
+  assignedRoutines         RoutineAssignment[]  @relation("RoutineAssignedBy")
+  auditEvents              AuditEvent[]         @relation("AuditActor")
+  consentRecords           ConsentRecord[]      @relation("ConsentGuardian")
+  enteredMeasurements      Measurement[]        @relation("MeasurementEnteredBy")
+  evaluations              Evaluation[]         @relation("EvaluationEvaluator")
+  generatedReports         Report[]             @relation("ReportGeneratedBy")
+  guardianLinks            GuardianPlayerLink[] @relation("GuardianUser")
+  memberships              OrganizationMembership[]
+  readinessChecks          ReadinessCheck[]     @relation("ReadinessEnteredBy")
+  teamMemberships          TeamMembership[]
+  workloadEntries          WorkloadEntry[]      @relation("WorkloadEnteredBy")
+}
+
+model OrganizationMembership {
+  id             String           @id @default(cuid())
+  organizationId String
+  userId         String
+  role           OrganizationRole
+  status         MembershipStatus @default(active)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         UserProfile  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId, role])
+  @@index([organizationId, role])
+}
+
+model Season {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  startDate      DateTime
+  endDate        DateTime
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  teams        Team[]
+}
+
+model Team {
+  id             String   @id @default(cuid())
+  organizationId String
+  seasonId       String
+  name           String
+  sport          Sport
+  sexCategory    String?
+  level          String
+  activeStatus   ActiveStatus @default(active)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization       Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  reports            Report[]
+  routineAssignments RoutineAssignment[]
+  season             Season              @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  teamMemberships    TeamMembership[]
+  teamPlayers        TeamPlayer[]
+  workloadEntries    WorkloadEntry[]
+
+  @@index([organizationId, seasonId])
+}
+
+model TeamMembership {
+  id             String           @id @default(cuid())
+  organizationId String
+  teamId         String
+  userId         String
+  role           OrganizationRole
+  status         MembershipStatus @default(active)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  team         Team         @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user         UserProfile  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId, role])
+  @@index([organizationId, role])
+}
+
+model Player {
+  id             String   @id @default(cuid())
+  organizationId String
+  preferredName  String
+  dateOfBirth    DateTime
+  sexAtBirth     String?
+  sports         Sport[]
+  positions      String[]
+  dominantHand   String?
+  dominantFoot   String?
+  activeStatus   ActiveStatus @default(active)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  alerts             Alert[]
+  consents           ConsentRecord[]
+  evaluations        Evaluation[]
+  goals              Goal[]
+  guardianLinks      GuardianPlayerLink[]
+  measurements       Measurement[]
+  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  readinessChecks    ReadinessCheck[]
+  reports            Report[]
+  routineAssignments RoutineAssignment[]
+  routineCompletions RoutineCompletion[]
+  teamPlayers        TeamPlayer[]
+  workloadEntries    WorkloadEntry[]
+
+  @@index([organizationId])
+}
+
+model TeamPlayer {
+  id        String       @id @default(cuid())
+  teamId    String
+  playerId  String
+  status    ActiveStatus @default(active)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, playerId])
+}
+
+model GuardianPlayerLink {
+  id             String           @id @default(cuid())
+  guardianUserId String
+  playerId       String
+  relationship   String
+  status         MembershipStatus @default(active)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  guardian UserProfile @relation("GuardianUser", fields: [guardianUserId], references: [id], onDelete: Cascade)
+  player   Player      @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([guardianUserId, playerId])
+}
+
+model ConsentRecord {
+  id             String        @id @default(cuid())
+  organizationId String
+  playerId       String
+  guardianUserId String
+  consentType    ConsentType
+  status         ConsentStatus
+  grantedAt      DateTime?
+  revokedAt      DateTime?
+  version        String
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  guardian     UserProfile  @relation("ConsentGuardian", fields: [guardianUserId], references: [id], onDelete: Restrict)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  player       Player       @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, playerId, consentType, status])
+}
+
+model MetricDefinition {
+  id                            String            @id @default(cuid())
+  organizationId                String?
+  code                          String
+  displayName                   String
+  sportScope                    SportScope
+  domain                        MetricDomain
+  valueType                     MetricValueType
+  unit                          String?
+  captureDifficulty             CaptureDifficulty
+  protocolVersion               String
+  benchmarkPolicy               BenchmarkPolicy
+  confidenceLevel               ConfidenceLevel
+  ageMin                        Int?
+  ageMax                        Int?
+  sexScope                      String?
+  maturityScope                 String?
+  requiresGuardianConsent       Boolean           @default(true)
+  safetyWarning                 String?
+  recommendedRetestIntervalDays Int?
+  visibleToPlayer               Boolean           @default(true)
+  visibleToGuardian             Boolean           @default(true)
+  visibleToCoach                Boolean           @default(true)
+  rankingAllowed                Boolean           @default(false)
+  createdAt                     DateTime          @default(now())
+  updatedAt                     DateTime          @updatedAt
+
+  benchmarks   Benchmark[]
+  goals        Goal[]
+  measurements Measurement[]
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, code])
+  @@index([sportScope, domain])
+}
+
+model Evaluation {
+  id              String   @id @default(cuid())
+  organizationId  String
+  playerId        String
+  evaluatorUserId String?
+  evaluationType  String
+  date            DateTime
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  evaluator    UserProfile?  @relation("EvaluationEvaluator", fields: [evaluatorUserId], references: [id], onDelete: SetNull)
+  measurements Measurement[]
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  player       Player        @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, playerId, date])
+}
+
+model Measurement {
+  id                 String   @id @default(cuid())
+  organizationId     String
+  playerId           String
+  evaluationId       String?
+  workloadEntryId    String?
+  metricDefinitionId String
+  valueNumber        Decimal?
+  valueText          String?
+  valueBoolean       Boolean?
+  protocolVersion    String
+  context            Json     @default("{}")
+  enteredByUserId    String?
+  enteredByRole      OrganizationRole?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  enteredBy        UserProfile?     @relation("MeasurementEnteredBy", fields: [enteredByUserId], references: [id], onDelete: SetNull)
+  evaluation       Evaluation?      @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  metricDefinition MetricDefinition @relation(fields: [metricDefinitionId], references: [id], onDelete: Restrict)
+  organization     Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  player           Player           @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  workloadEntry    WorkloadEntry?   @relation(fields: [workloadEntryId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, playerId])
+  @@index([metricDefinitionId])
+}
+
+model ReadinessCheck {
+  id              String   @id @default(cuid())
+  organizationId  String
+  playerId        String
+  date            DateTime
+  sleepHours      Decimal?
+  sleepQuality    Int?
+  sorenessScore   Int?
+  painAny         Boolean  @default(false)
+  painBodyParts   String[]
+  energyScore     Int?
+  moodScore       Int?
+  notes           String?
+  enteredByUserId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  enteredBy    UserProfile? @relation("ReadinessEnteredBy", fields: [enteredByUserId], references: [id], onDelete: SetNull)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  player       Player       @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([playerId, date])
+  @@index([organizationId, date])
+}
+
+model WorkloadEntry {
+  id                  String   @id @default(cuid())
+  organizationId      String
+  playerId            String
+  teamId              String?
+  date                DateTime
+  sport               Sport
+  sessionType         String
+  minutes             Int?
+  sessionRpe          Int?
+  throws              Int?
+  pitches             Int?
+  innings             Decimal?
+  participationStatus String
+  notes               String?
+  enteredByUserId     String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  enteredBy    UserProfile?  @relation("WorkloadEnteredBy", fields: [enteredByUserId], references: [id], onDelete: SetNull)
+  measurements Measurement[]
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  player       Player        @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  team         Team?         @relation(fields: [teamId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, playerId, date])
+  @@index([teamId, date])
+}
+
+model Routine {
+  id               String       @id @default(cuid())
+  organizationId   String?
+  sport            Sport
+  level            String
+  code             String
+  name             String
+  durationMin      Int
+  equipment        String[]
+  stopRules        Json
+  progressionRules Json
+  activeStatus     ActiveStatus @default(active)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  assignments  RoutineAssignment[]
+  organization Organization?        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, code])
+}
+
+model RoutineAssignment {
+  id             String       @id @default(cuid())
+  organizationId String
+  routineId      String
+  playerId       String?
+  teamId         String?
+  assignedById   String?
+  dueDates       DateTime[]
+  frequency      String
+  status         ActiveStatus @default(active)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  assignedBy   UserProfile?        @relation("RoutineAssignedBy", fields: [assignedById], references: [id], onDelete: SetNull)
+  completions  RoutineCompletion[]
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  player       Player?             @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  routine      Routine             @relation(fields: [routineId], references: [id], onDelete: Restrict)
+  team         Team?               @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status])
+}
+
+model RoutineCompletion {
+  id             String   @id @default(cuid())
+  organizationId String
+  assignmentId   String
+  playerId       String
+  date           DateTime
+  completed      Boolean
+  quality        String?
+  painDuring     Boolean  @default(false)
+  rpe            Int?
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  assignment   RoutineAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  player       Player            @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, playerId, date])
+}
+
+model Alert {
+  id                    String        @id @default(cuid())
+  organizationId        String
+  playerId              String
+  severity              AlertSeverity
+  ruleCode              String
+  bodyPart              String?
+  sourceType            String
+  sourceId              String?
+  reason                String
+  nextAction            String
+  status                AlertStatus   @default(open)
+  escalatedToGuardianId String?
+  escalatedToCoachId    String?
+  resolvedAt            DateTime?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  escalatedToCoach    UserProfile? @relation("AlertCoachEscalation", fields: [escalatedToCoachId], references: [id], onDelete: SetNull)
+  escalatedToGuardian UserProfile? @relation("AlertGuardianEscalation", fields: [escalatedToGuardianId], references: [id], onDelete: SetNull)
+  organization        Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  player              Player       @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status, severity])
+  @@index([playerId, status])
+}
+
+model Goal {
+  id                 String       @id @default(cuid())
+  organizationId     String
+  playerId           String
+  metricDefinitionId String?
+  targetType         String
+  targetValue        String?
+  dueDate            DateTime?
+  status             ActiveStatus @default(active)
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  metricDefinition MetricDefinition? @relation(fields: [metricDefinitionId], references: [id], onDelete: SetNull)
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  player           Player            @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, playerId, status])
+}
+
+model Benchmark {
+  id                 String          @id @default(cuid())
+  organizationId     String?
+  metricDefinitionId String
+  ageBand            String?
+  sexScope           String?
+  maturityScope      String?
+  levelScope         String?
+  sourceTitle        String
+  sourceCitation     String
+  confidence         ConfidenceLevel
+  lowerBound         Decimal?
+  midBound           Decimal?
+  upperBound         Decimal?
+  notes              String?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  metricDefinition MetricDefinition @relation(fields: [metricDefinitionId], references: [id], onDelete: Cascade)
+  organization     Organization?    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([metricDefinitionId, confidence])
+}
+
+model Recommendation {
+  id             String        @id @default(cuid())
+  organizationId String?
+  triggerType    String
+  ruleCode       String
+  outputText     String
+  severity       AlertSeverity
+  activeStatus   ActiveStatus  @default(active)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([ruleCode, activeStatus])
+}
+
+model Report {
+  id                String     @id @default(cuid())
+  organizationId    String
+  playerId          String?
+  teamId            String?
+  reportType        ReportType
+  generatedAt       DateTime   @default(now())
+  generatedByUserId String?
+  snapshotPayload   Json
+  blobUri           String?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  generatedBy  UserProfile? @relation("ReportGeneratedBy", fields: [generatedByUserId], references: [id], onDelete: SetNull)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  player       Player?      @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  team         Team?        @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, reportType, generatedAt])
+}
+
+model AuditEvent {
+  id             String   @id @default(cuid())
+  organizationId String?
+  actorUserId    String?
+  action         String
+  entityType     String
+  entityId       String?
+  occurredAt     DateTime @default(now())
+  metadata       Json     @default("{}")
+
+  actor       UserProfile?  @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, occurredAt])
+  @@index([entityType, entityId])
+}
