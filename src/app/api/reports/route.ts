@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import type { Prisma } from "@prisma/client";
+import { requirePlayerAccess } from "@/lib/auth-guards";
 import { writeAuditEvent } from "@/lib/audit";
 import { apiErrorResponse } from "@/lib/api-response";
 import { getPrisma } from "@/lib/db";
@@ -25,6 +26,16 @@ export async function POST(request: NextRequest) {
 
   if (!player || player.organizationId !== body.organizationId) {
     return apiErrorResponse("NOT_FOUND", "Player was not found.", 404);
+  }
+
+  const authResponse = requirePlayerAccess(request.headers, {
+    organizationId: body.organizationId,
+    playerId: body.playerId,
+    requiresConsent: true
+  });
+
+  if (authResponse) {
+    return authResponse;
   }
 
   const [readinessCount, workloadCount, openAlertCount, routineCompletionCount] = await Promise.all([

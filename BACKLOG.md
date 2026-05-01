@@ -31,7 +31,7 @@ Status values:
 | Team dashboard UI | In Progress | API payload viewer exists; role-aware polished coach dashboard UI remains. |
 | Guardian dashboard UI | Todo | Guardian sees linked player, weekly plan, alerts, reports, and consent state. |
 | Admin dashboard UI | Todo | Admin sees metric definitions, consent gaps, alerts, audit events, and benchmark coverage. |
-| Consent workflow | In Progress | Consent can be recorded with audit events; missing-consent enforcement is still pending auth middleware. |
+| Consent workflow | In Progress | Consent can be recorded with audit events; sensitive player routes enforce consent when `AUTH_ENFORCEMENT=on`. |
 | Alert resolution workflow | Done | Alerts can be acknowledged/resolved with audit events. |
 | Benchmark import | Done | `POST /api/benchmarks/import` exists with validation, audit, and confidence guards. |
 | Goal workflow | In Progress | Goals can be created; update/list/dashboard rendering remains. |
@@ -66,9 +66,9 @@ Status values:
 | Item | Status | Done Criteria |
 |---|---|---|
 | Entra External ID integration | Todo | Login, callback, session, claims, and user mapping are implemented. |
-| API authorization middleware | In Progress | Request access context parser exists; route enforcement and Entra claim mapping remain. |
-| Cross-tenant denial tests | Todo | Automated tests prove access is denied across organizations. |
-| Missing-consent denial tests | Todo | Sensitive youth data collection/display is blocked without consent. |
+| API authorization middleware | In Progress | Guard helpers protect sensitive player/workload/report/routine routes when `AUTH_ENFORCEMENT=on`; Entra claim mapping and full route coverage remain. |
+| Cross-tenant denial tests | In Progress | Guard-level tests prove denial; DB-backed route integration tests remain blocked by PostgreSQL. |
+| Missing-consent denial tests | In Progress | Guard-level tests prove denial; DB-backed route integration tests remain blocked by PostgreSQL. |
 | Legal/privacy review | Blocked | Child privacy and verifiable parental consent flow approved before production. |
 | Data retention/delete/export | Todo | Retention, deletion, and export behavior are implemented and documented. |
 

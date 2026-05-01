@@ -36,6 +36,9 @@ jobs:
       - name: Validate Prisma schema
         run: npm run prisma:validate
 
+      - name: Generate Prisma client
+        run: npm run prisma:generate
+
       - name: Build
         run: npm run build
 

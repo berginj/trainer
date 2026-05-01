@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { requirePlayerAccess } from "@/lib/auth-guards";
 import { apiErrorResponse } from "@/lib/api-response";
 import { buildPlayerDashboard } from "@/lib/dashboard";
 import { getPrisma } from "@/lib/db";
@@ -35,6 +36,16 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
 
   if (!player) {
     return apiErrorResponse("NOT_FOUND", "Player was not found.", 404);
+  }
+
+  const authResponse = requirePlayerAccess(_request.headers, {
+    organizationId: player.organizationId,
+    playerId: player.id,
+    requiresConsent: true
+  });
+
+  if (authResponse) {
+    return authResponse;
   }
 
   return NextResponse.json({

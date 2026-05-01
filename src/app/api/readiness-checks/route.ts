@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { requirePlayerAccess } from "@/lib/auth-guards";
 import { writeAuditEvent } from "@/lib/audit";
 import { getPrisma } from "@/lib/db";
 import { parseJsonWithSchema } from "@/lib/route-utils";
@@ -12,6 +13,16 @@ export async function POST(request: NextRequest) {
 
   if (parsed.response) {
     return parsed.response;
+  }
+
+  const authResponse = requirePlayerAccess(request.headers, {
+    organizationId: parsed.data.organizationId,
+    playerId: parsed.data.playerId,
+    requiresConsent: true
+  });
+
+  if (authResponse) {
+    return authResponse;
   }
 
   const prisma = getPrisma();
