@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { requireOrganizationManagementAccess, requirePlatformAdmin } from "@/lib/auth-guards";
 import { writeAuditEvent } from "@/lib/audit";
 import { getPrisma } from "@/lib/db";
+import { getRequestActorId } from "@/lib/request-auth";
 import { parseJsonWithSchema } from "@/lib/route-utils";
 import { benchmarkImportSchema } from "@/lib/validation";
 
@@ -13,6 +15,14 @@ export async function POST(request: NextRequest) {
     return parsed.response;
   }
 
+  const forbidden = parsed.data.organizationId
+    ? requireOrganizationManagementAccess(request.headers, parsed.data.organizationId)
+    : requirePlatformAdmin(request.headers);
+
+  if (forbidden) {
+    return forbidden;
+  }
+
   const prisma = getPrisma();
   const benchmark = await prisma.benchmark.create({
     data: parsed.data
@@ -20,6 +30,7 @@ export async function POST(request: NextRequest) {
 
   await writeAuditEvent(prisma, {
     organizationId: parsed.data.organizationId ?? null,
+    actorUserId: getRequestActorId(request.headers),
     action: "benchmark.imported",
     entityType: "Benchmark",
     entityId: benchmark.id,

@@ -1,7 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 import type { Prisma } from "@prisma/client";
+import { requirePlayerDataEntryAccess } from "@/lib/auth-guards";
 import { writeAuditEvent } from "@/lib/audit";
 import { getPrisma } from "@/lib/db";
+import { getRequestActorId } from "@/lib/request-auth";
 import { parseJsonWithSchema } from "@/lib/route-utils";
 import { measurementCreateSchema } from "@/lib/validation";
 
@@ -14,16 +16,28 @@ export async function POST(request: NextRequest) {
     return parsed.response;
   }
 
+  const forbidden = requirePlayerDataEntryAccess(request.headers, {
+    organizationId: parsed.data.organizationId,
+    playerId: parsed.data.playerId,
+    requiresConsent: true
+  });
+
+  if (forbidden) {
+    return forbidden;
+  }
+
   const prisma = getPrisma();
+  const actorUserId = getRequestActorId(request.headers, parsed.data.enteredByUserId);
   const measurement = await prisma.measurement.create({
     data: {
       ...parsed.data,
+      enteredByUserId: actorUserId ?? parsed.data.enteredByUserId,
       context: parsed.data.context as Prisma.InputJsonValue
     }
   });
   await writeAuditEvent(prisma, {
     organizationId: parsed.data.organizationId,
-    actorUserId: parsed.data.enteredByUserId ?? null,
+    actorUserId,
     action: "measurement.created",
     entityType: "Measurement",
     entityId: measurement.id,

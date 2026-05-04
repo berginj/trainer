@@ -36,6 +36,11 @@ Status values:
 | Benchmark import | Done | `POST /api/benchmarks/import` exists with validation, audit, and confidence guards. |
 | Goal workflow | In Progress | Goals can be created; update/list/dashboard rendering remains. |
 | Team roster assignment API | Done | Players can be assigned to teams from UI/API. |
+| Google Calendar appointment sync foundation | In Progress | OAuth connection, calendar selection, event import, dedupe, appointment records, and trainer review APIs exist; production polling against Google and token refresh hardening remain. |
+| Appointment-athlete matching workflow | Done | Exact email/name matches, fuzzy recommendations, trainer confirm/create/ignore flows, and tests exist. |
+| Weather/reschedule notice workflow | In Progress | Change notices and email payload preparation exist; actual email provider delivery remains. |
+| Venmo CSV reconciliation foundation | Done | CSV import, normalization, match recommendations, transaction review APIs, UI, and tests exist without scraping or unofficial APIs. |
+| GameChanger stats import foundation | In Progress | Official-export plan, CSV parser, player-match recommendations, dedupe keys, persistence schema, import/list/review APIs, workflow UI, and tests exist; schedule-game mapping, season-total deltas, workload derivation, and DB-backed route tests remain. |
 
 ## Remaining Business Rules
 
@@ -54,9 +59,10 @@ Status values:
 | Item | Status | Done Criteria |
 |---|---|---|
 | Real PostgreSQL database | Blocked | `DATABASE_URL` configured locally or in Azure. |
-| Prisma migrations | Blocked | Migration files generated and applied against PostgreSQL. |
+| Prisma migrations | In Progress | Baseline and calendar/payment migration files exist; apply them against PostgreSQL with `npm run prisma:migrate:deploy`. |
 | Seed execution | Blocked | `npm run prisma:seed` succeeds against PostgreSQL. |
 | API integration tests | Blocked | Test database validates create/read/report/alert flows. |
+| Calendar/payment route integration tests | Blocked | PostgreSQL-backed tests validate tenant boundaries, dedupe, appointment matching persistence, notices, and payment reconciliation persistence. |
 | E2E tests | Todo | Playwright covers org setup -> roster -> readiness -> workload -> routine -> report. |
 | Accessibility checks | Todo | Key forms and dashboards pass keyboard, labels, focus, and contrast checks. |
 | Docker image validation | Blocked | Docker engine or CI runner builds and smoke-tests image. |
@@ -71,6 +77,8 @@ Status values:
 | Missing-consent denial tests | In Progress | Guard-level tests prove denial; DB-backed route integration tests remain blocked by PostgreSQL. |
 | Legal/privacy review | Blocked | Child privacy and verifiable parental consent flow approved before production. |
 | Data retention/delete/export | Todo | Retention, deletion, and export behavior are implemented and documented. |
+| Google token rotation and refresh | Blocked | Azure Key Vault or production secret policy is configured; expired Google access tokens refresh without exposing token values. |
+| Email provider integration | Blocked | Azure Communication Services or approved email provider sends prepared appointment change notices with delivery audit. |
 
 ## Remaining Azure And Operations Work
 
@@ -79,7 +87,7 @@ Status values:
 | Bicep infrastructure | Todo | ACA, ACR, PostgreSQL, Blob, Service Bus, Key Vault, App Config, Front Door/WAF, Monitor. |
 | GitHub OIDC deployment | In Progress | Manual workflow scaffold exists; live OIDC configuration remains. |
 | ACR image push | In Progress | Workflow builds and pushes immutable image tags once ACR variables are configured. |
-| Migration release gate | In Progress | Workflow gate exists; replace placeholder with `prisma migrate deploy` after migrations exist. |
+| Migration release gate | In Progress | Workflow gate runs `npm run prisma:migrate:deploy`; live validation waits on configured Azure `DATABASE_URL`. |
 | Smoke tests | In Progress | Workflow checks health endpoints after deploy once `APP_BASE_URL` is configured. |
 | Azure Monitor alerts | Todo | Error, latency, queue, DB, auth, deployment, and report failures alert operators. |
 | Runbooks | Todo | Rollback, restore, DLQ replay, secret rotation, consent incident, data exposure. |

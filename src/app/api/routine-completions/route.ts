@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { requirePlayerDataEntryAccess } from "@/lib/auth-guards";
 import { writeAuditEvent } from "@/lib/audit";
 import { getPrisma } from "@/lib/db";
+import { getRequestActorId } from "@/lib/request-auth";
 import { parseJsonWithSchema } from "@/lib/route-utils";
 import { buildPainAlert } from "@/lib/safety-rules";
 import { routineCompletionCreateSchema } from "@/lib/validation";
@@ -14,12 +16,24 @@ export async function POST(request: NextRequest) {
     return parsed.response;
   }
 
+  const forbidden = requirePlayerDataEntryAccess(request.headers, {
+    organizationId: parsed.data.organizationId,
+    playerId: parsed.data.playerId,
+    requiresConsent: true,
+    allowLinkedUserEntry: true
+  });
+
+  if (forbidden) {
+    return forbidden;
+  }
+
   const prisma = getPrisma();
   const routineCompletion = await prisma.routineCompletion.create({
     data: parsed.data
   });
   await writeAuditEvent(prisma, {
     organizationId: parsed.data.organizationId,
+    actorUserId: getRequestActorId(request.headers),
     action: "routine_completion.created",
     entityType: "RoutineCompletion",
     entityId: routineCompletion.id,

@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { requireTeamEntryAccess } from "@/lib/auth-guards";
 import { apiErrorResponse } from "@/lib/api-response";
 import { buildTeamDashboard } from "@/lib/dashboard";
 import { getPrisma } from "@/lib/db";
@@ -21,6 +22,15 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
 
   if (!team) {
     return apiErrorResponse("NOT_FOUND", "Team was not found.", 404);
+  }
+
+  const forbidden = requireTeamEntryAccess(_request.headers, {
+    organizationId: team.organizationId,
+    teamId: team.id
+  });
+
+  if (forbidden) {
+    return forbidden;
   }
 
   const playerIds = team.teamPlayers.map(({ playerId }) => playerId);

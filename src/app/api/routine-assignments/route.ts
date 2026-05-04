@@ -1,8 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { requirePlayerAccess, requireTeamEntryAccess } from "@/lib/auth-guards";
+import { requirePlayerDataEntryAccess, requireTeamEntryAccess } from "@/lib/auth-guards";
 import { writeAuditEvent } from "@/lib/audit";
 import { apiErrorResponse } from "@/lib/api-response";
 import { getPrisma } from "@/lib/db";
+import { getRequestActorId } from "@/lib/request-auth";
 import { parseJsonWithSchema } from "@/lib/route-utils";
 import { routineAssignmentCreateSchema } from "@/lib/validation";
 
@@ -21,7 +22,7 @@ export async function POST(request: NextRequest) {
         teamId: parsed.data.teamId
       })
     : parsed.data.playerId
-      ? requirePlayerAccess(request.headers, {
+      ? requirePlayerDataEntryAccess(request.headers, {
           organizationId: parsed.data.organizationId,
           playerId: parsed.data.playerId,
           requiresConsent: true
@@ -66,12 +67,16 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  const actorUserId = getRequestActorId(request.headers, parsed.data.assignedById);
   const routineAssignment = await prisma.routineAssignment.create({
-    data: parsed.data
+    data: {
+      ...parsed.data,
+      assignedById: actorUserId ?? parsed.data.assignedById
+    }
   });
   await writeAuditEvent(prisma, {
     organizationId: parsed.data.organizationId,
-    actorUserId: parsed.data.assignedById ?? null,
+    actorUserId,
     action: "routine_assignment.created",
     entityType: "RoutineAssignment",
     entityId: routineAssignment.id,

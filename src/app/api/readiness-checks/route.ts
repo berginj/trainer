@@ -1,7 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { requirePlayerAccess } from "@/lib/auth-guards";
+import { requirePlayerDataEntryAccess } from "@/lib/auth-guards";
 import { writeAuditEvent } from "@/lib/audit";
 import { getPrisma } from "@/lib/db";
+import { getRequestActorId } from "@/lib/request-auth";
 import { parseJsonWithSchema } from "@/lib/route-utils";
 import { buildPainAlert } from "@/lib/safety-rules";
 import { readinessCheckCreateSchema } from "@/lib/validation";
@@ -15,10 +16,11 @@ export async function POST(request: NextRequest) {
     return parsed.response;
   }
 
-  const authResponse = requirePlayerAccess(request.headers, {
+  const authResponse = requirePlayerDataEntryAccess(request.headers, {
     organizationId: parsed.data.organizationId,
     playerId: parsed.data.playerId,
-    requiresConsent: true
+    requiresConsent: true,
+    allowLinkedUserEntry: true
   });
 
   if (authResponse) {
@@ -26,12 +28,16 @@ export async function POST(request: NextRequest) {
   }
 
   const prisma = getPrisma();
+  const actorUserId = getRequestActorId(request.headers, parsed.data.enteredByUserId);
   const readinessCheck = await prisma.readinessCheck.create({
-    data: parsed.data
+    data: {
+      ...parsed.data,
+      enteredByUserId: actorUserId ?? parsed.data.enteredByUserId
+    }
   });
   await writeAuditEvent(prisma, {
     organizationId: parsed.data.organizationId,
-    actorUserId: parsed.data.enteredByUserId ?? null,
+    actorUserId,
     action: "readiness_check.created",
     entityType: "ReadinessCheck",
     entityId: readinessCheck.id,

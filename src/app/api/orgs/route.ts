@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { requirePlatformAdmin } from "@/lib/auth-guards";
 import { writeAuditEvent } from "@/lib/audit";
 import { getPrisma } from "@/lib/db";
+import { getRequestActorId } from "@/lib/request-auth";
 import { parseJsonWithSchema } from "@/lib/route-utils";
 import { organizationCreateSchema } from "@/lib/validation";
 
@@ -13,12 +15,19 @@ export async function POST(request: NextRequest) {
     return parsed.response;
   }
 
+  const forbidden = requirePlatformAdmin(request.headers);
+
+  if (forbidden) {
+    return forbidden;
+  }
+
   const prisma = getPrisma();
   const organization = await prisma.organization.create({
     data: parsed.data
   });
   await writeAuditEvent(prisma, {
     organizationId: organization.id,
+    actorUserId: getRequestActorId(request.headers),
     action: "organization.created",
     entityType: "Organization",
     entityId: organization.id

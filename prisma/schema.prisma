@@ -115,6 +115,105 @@ enum ReportType {
   coach_roster
 }
 
+enum ExternalCalendarProvider {
+  google
+}
+
+enum ExternalIntegrationStatus {
+  pending
+  connected
+  revoked
+  error
+}
+
+enum CalendarEventSyncStatus {
+  imported
+  updated
+  cancelled
+  skipped
+  error
+}
+
+enum TrainerAppointmentSource {
+  google_calendar
+  manual
+}
+
+enum TrainerAppointmentStatus {
+  imported
+  matched
+  ignored
+  cancelled
+  needs_reschedule
+  completed
+}
+
+enum AppointmentMatchStatus {
+  matched
+  recommended
+  unmatched
+  ignored
+}
+
+enum AppointmentChangeType {
+  cancelled
+  needs_reschedule
+}
+
+enum NotificationDeliveryStatus {
+  pending
+  prepared
+  sent
+  failed
+  skipped
+}
+
+enum PaymentTransactionDirection {
+  payment_received
+  payment_sent
+  expense
+  refund
+  unknown
+}
+
+enum PaymentReconciliationStatus {
+  matched
+  recommended
+  unmatched
+  ignored
+}
+
+enum ExternalSportsProvider {
+  gamechanger
+}
+
+enum SportStatImportScope {
+  game_filtered
+  season_totals
+}
+
+enum SportStatImportStatus {
+  needs_review
+  accepted
+  rejected
+  superseded
+}
+
+enum ExternalGameStatus {
+  scheduled
+  completed
+  cancelled
+  postponed
+  unknown
+}
+
+enum PlayerStatLineReviewStatus {
+  matched
+  recommended
+  unmatched
+  ignored
+}
+
 model Organization {
   id           String   @id @default(cuid())
   name         String
@@ -125,12 +224,26 @@ model Organization {
 
   alerts               Alert[]
   auditEvents          AuditEvent[]
+  appointmentChangeNotices AppointmentChangeNotice[]
+  appointmentAthleteMatches AppointmentAthleteMatch[]
   benchmarks           Benchmark[]
   consents             ConsentRecord[]
   evaluations          Evaluation[]
+  externalCalendarEvents ExternalCalendarEvent[]
+  externalCalendarIntegrations ExternalCalendarIntegration[]
+  externalCalendars    ExternalCalendar[]
+  externalGames        ExternalGame[]
+  externalPlayerIdentities ExternalPlayerIdentity[]
+  externalSportsSources ExternalSportsSource[]
+  externalTeamIdentities ExternalTeamIdentity[]
   goals                Goal[]
   measurements         Measurement[]
   memberships          OrganizationMembership[]
+  playerGameStatLines  PlayerGameStatLine[]
+  playerSeasonStatSnapshots PlayerSeasonStatSnapshot[]
+  paymentAthleteMatches PaymentAthleteMatch[]
+  paymentImportBatches PaymentImportBatch[]
+  paymentTransactions  PaymentTransaction[]
   metricDefinitions    MetricDefinition[]
   players              Player[]
   readinessChecks      ReadinessCheck[]
@@ -140,8 +253,10 @@ model Organization {
   routineCompletions   RoutineCompletion[]
   routines             Routine[]
   seasons              Season[]
+  sportStatImportBatches SportStatImportBatch[]
   teamMemberships      TeamMembership[]
   teams                Team[]
+  trainerAppointments  TrainerAppointment[]
   workloadEntries      WorkloadEntry[]
 }
 
@@ -155,16 +270,24 @@ model UserProfile {
 
   alertCoachEscalations    Alert[]              @relation("AlertCoachEscalation")
   alertGuardianEscalations Alert[]              @relation("AlertGuardianEscalation")
+  appointmentChangeNotices AppointmentChangeNotice[] @relation("AppointmentChangeActor")
   assignedRoutines         RoutineAssignment[]  @relation("RoutineAssignedBy")
   auditEvents              AuditEvent[]         @relation("AuditActor")
+  confirmedAppointmentMatches AppointmentAthleteMatch[] @relation("AppointmentMatchConfirmedBy")
+  confirmedPaymentMatches PaymentAthleteMatch[] @relation("PaymentMatchConfirmedBy")
   consentRecords           ConsentRecord[]      @relation("ConsentGuardian")
   enteredMeasurements      Measurement[]        @relation("MeasurementEnteredBy")
   evaluations              Evaluation[]         @relation("EvaluationEvaluator")
+  externalCalendarIntegrations ExternalCalendarIntegration[] @relation("TrainerCalendarIntegrations")
   generatedReports         Report[]             @relation("ReportGeneratedBy")
   guardianLinks            GuardianPlayerLink[] @relation("GuardianUser")
   memberships              OrganizationMembership[]
+  confirmedPlayerGameStatLines PlayerGameStatLine[] @relation("PlayerGameStatLineConfirmedBy")
+  paymentImportBatches     PaymentImportBatch[] @relation("PaymentImportTrainer")
   readinessChecks          ReadinessCheck[]     @relation("ReadinessEnteredBy")
+  sportStatImportBatches   SportStatImportBatch[] @relation("SportStatImportUser")
   teamMemberships          TeamMembership[]
+  trainerAppointments      TrainerAppointment[] @relation("TrainerAppointments")
   workloadEntries          WorkloadEntry[]      @relation("WorkloadEnteredBy")
 }
 
@@ -209,10 +332,16 @@ model Team {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
+  externalGames       ExternalGame[]
+  externalPlayerIdentities ExternalPlayerIdentity[]
+  externalTeamIdentities ExternalTeamIdentity[]
   organization       Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  playerGameStatLines PlayerGameStatLine[]
+  playerSeasonStatSnapshots PlayerSeasonStatSnapshot[]
   reports            Report[]
   routineAssignments RoutineAssignment[]
   season             Season              @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  sportStatImportBatches SportStatImportBatch[]
   teamMemberships    TeamMembership[]
   teamPlayers        TeamPlayer[]
   workloadEntries    WorkloadEntry[]
@@ -253,20 +382,427 @@ model Player {
   updatedAt      DateTime @updatedAt
 
   alerts             Alert[]
+  appointmentMatches AppointmentAthleteMatch[]
   consents           ConsentRecord[]
   evaluations        Evaluation[]
+  externalPlayerIdentities ExternalPlayerIdentity[]
   goals              Goal[]
   guardianLinks      GuardianPlayerLink[]
   measurements       Measurement[]
   organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  playerGameStatLines PlayerGameStatLine[]
+  playerSeasonStatSnapshots PlayerSeasonStatSnapshot[]
+  paymentMatches     PaymentAthleteMatch[]
   readinessChecks    ReadinessCheck[]
   reports            Report[]
   routineAssignments RoutineAssignment[]
   routineCompletions RoutineCompletion[]
   teamPlayers        TeamPlayer[]
+  trainerAppointments TrainerAppointment[]
   workloadEntries    WorkloadEntry[]
 
   @@index([organizationId])
+}
+
+model ExternalCalendarIntegration {
+  id                         String                    @id @default(cuid())
+  organizationId             String
+  trainerUserId              String
+  provider                   ExternalCalendarProvider  @default(google)
+  providerAccountEmail       String?
+  scopes                     String[]
+  status                     ExternalIntegrationStatus @default(pending)
+  accessTokenEncrypted       String?
+  refreshTokenEncrypted      String?
+  tokenExpiresAt             DateTime?
+  tokenEncryptionKeyVersion  String?
+  lastSyncStartedAt          DateTime?
+  lastSyncCompletedAt        DateTime?
+  lastSyncError              String?
+  createdAt                  DateTime                  @default(now())
+  updatedAt                  DateTime                  @updatedAt
+
+  calendars    ExternalCalendar[]
+  events       ExternalCalendarEvent[]
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  trainer      UserProfile  @relation("TrainerCalendarIntegrations", fields: [trainerUserId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, trainerUserId, provider, status])
+}
+
+model ExternalCalendar {
+  id             String   @id @default(cuid())
+  organizationId String
+  integrationId  String
+  providerCalendarId String
+  summary        String
+  description    String?
+  timeZone       String?
+  selectedForSync Boolean @default(false)
+  syncToken      String?
+  lastSyncedAt   DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  events       ExternalCalendarEvent[]
+  integration  ExternalCalendarIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([integrationId, providerCalendarId])
+  @@index([organizationId, selectedForSync])
+}
+
+model ExternalCalendarEvent {
+  id                    String                  @id @default(cuid())
+  organizationId        String
+  integrationId         String
+  externalCalendarId    String
+  googleCalendarId      String
+  googleEventId         String
+  title                 String
+  startTime             DateTime
+  endTime               DateTime
+  location              String?
+  description           String?
+  attendeeEmails        String[]
+  googleUpdatedAt       DateTime?
+  syncStatus            CalendarEventSyncStatus @default(imported)
+  rawMetadata           Json                    @default("{}")
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+
+  appointment      TrainerAppointment?
+  externalGames    ExternalGame[]
+  calendar         ExternalCalendar            @relation(fields: [externalCalendarId], references: [id], onDelete: Cascade)
+  integration      ExternalCalendarIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  organization     Organization                @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([integrationId, googleCalendarId, googleEventId])
+  @@index([organizationId, startTime])
+}
+
+model TrainerAppointment {
+  id                      String                   @id @default(cuid())
+  organizationId          String
+  trainerUserId           String
+  playerId                String?
+  externalCalendarEventId String?                  @unique
+  source                  TrainerAppointmentSource @default(google_calendar)
+  status                  TrainerAppointmentStatus @default(imported)
+  title                   String
+  startTime               DateTime
+  endTime                 DateTime
+  location                String?
+  notes                   String?
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+
+  changeNotices AppointmentChangeNotice[]
+  externalEvent ExternalCalendarEvent? @relation(fields: [externalCalendarEventId], references: [id], onDelete: SetNull)
+  matches       AppointmentAthleteMatch[]
+  organization  Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  player        Player?      @relation(fields: [playerId], references: [id], onDelete: SetNull)
+  trainer       UserProfile  @relation("TrainerAppointments", fields: [trainerUserId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, trainerUserId, startTime])
+  @@index([organizationId, status])
+}
+
+model AppointmentAthleteMatch {
+  id                 String                 @id @default(cuid())
+  organizationId     String
+  appointmentId      String
+  playerId           String?
+  status             AppointmentMatchStatus
+  confidence         Int
+  reason             String
+  signals            Json                   @default("{}")
+  confirmedByUserId  String?
+  confirmedAt        DateTime?
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+
+  appointment TrainerAppointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  confirmedBy UserProfile?       @relation("AppointmentMatchConfirmedBy", fields: [confirmedByUserId], references: [id], onDelete: SetNull)
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  player       Player?           @relation(fields: [playerId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, status])
+  @@index([appointmentId, status])
+}
+
+model AppointmentChangeNotice {
+  id                 String                     @id @default(cuid())
+  organizationId     String
+  appointmentId      String
+  actorUserId        String?
+  changeType         AppointmentChangeType
+  reason             String
+  customMessage      String?
+  oneOffAvailability Json                       @default("[]")
+  emailPayload       Json                       @default("{}")
+  deliveryStatus     NotificationDeliveryStatus @default(prepared)
+  createdAt          DateTime                   @default(now())
+  updatedAt          DateTime                   @updatedAt
+
+  actor        UserProfile?       @relation("AppointmentChangeActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  appointment  TrainerAppointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt])
+  @@index([appointmentId])
+}
+
+model PaymentImportBatch {
+  id             String   @id @default(cuid())
+  organizationId String
+  trainerUserId  String
+  source         String   @default("venmo_csv")
+  originalFileName String?
+  fileSha256     String?
+  rowCount       Int
+  importedAt     DateTime @default(now())
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  trainer      UserProfile  @relation("PaymentImportTrainer", fields: [trainerUserId], references: [id], onDelete: Cascade)
+  transactions PaymentTransaction[]
+
+  @@index([organizationId, trainerUserId, importedAt])
+}
+
+model PaymentTransaction {
+  id                    String                       @id @default(cuid())
+  organizationId        String
+  importBatchId         String
+  externalTransactionId String?
+  transactionDate       DateTime
+  amount                Decimal
+  direction             PaymentTransactionDirection
+  counterpartyName      String?
+  counterpartyHandle    String?
+  counterpartyEmail     String?
+  note                  String?
+  reconciliationStatus  PaymentReconciliationStatus @default(unmatched)
+  rawMetadata           Json                         @default("{}")
+  createdAt             DateTime                     @default(now())
+  updatedAt             DateTime                     @updatedAt
+
+  importBatch  PaymentImportBatch @relation(fields: [importBatchId], references: [id], onDelete: Cascade)
+  matches      PaymentAthleteMatch[]
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, externalTransactionId])
+  @@index([organizationId, transactionDate])
+  @@index([organizationId, reconciliationStatus])
+}
+
+model PaymentAthleteMatch {
+  id                 String                      @id @default(cuid())
+  organizationId     String
+  transactionId      String
+  playerId           String?
+  status             PaymentReconciliationStatus
+  confidence         Int
+  reason             String
+  signals            Json                        @default("{}")
+  confirmedByUserId  String?
+  confirmedAt        DateTime?
+  createdAt          DateTime                    @default(now())
+  updatedAt          DateTime                    @updatedAt
+
+  confirmedBy  UserProfile?        @relation("PaymentMatchConfirmedBy", fields: [confirmedByUserId], references: [id], onDelete: SetNull)
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  player       Player?             @relation(fields: [playerId], references: [id], onDelete: SetNull)
+  transaction  PaymentTransaction  @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status])
+  @@index([transactionId, status])
+}
+
+model ExternalSportsSource {
+  id             String                    @id @default(cuid())
+  organizationId String
+  provider       ExternalSportsProvider    @default(gamechanger)
+  sourceName     String
+  sport          Sport?
+  status         ExternalIntegrationStatus @default(connected)
+  rawMetadata    Json                      @default("{}")
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
+
+  games        ExternalGame[]
+  importBatches SportStatImportBatch[]
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  playerIdentities ExternalPlayerIdentity[]
+  teamIdentities ExternalTeamIdentity[]
+
+  @@unique([organizationId, provider, sourceName])
+  @@index([organizationId, provider, status])
+}
+
+model ExternalTeamIdentity {
+  id               String   @id @default(cuid())
+  organizationId   String
+  sourceId         String
+  teamId           String
+  externalTeamId   String?
+  providerTeamName String
+  sport            Sport
+  rawMetadata      Json     @default("{}")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  organization Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  source       ExternalSportsSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  team         Team                 @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceId, teamId])
+  @@unique([sourceId, externalTeamId])
+  @@index([organizationId, sport])
+}
+
+model ExternalPlayerIdentity {
+  id                     String   @id @default(cuid())
+  organizationId         String
+  sourceId               String
+  teamId                 String?
+  playerId               String?
+  externalPlayerName     String
+  normalizedExternalName String
+  jerseyNumber           String?
+  aliases                String[]
+  rawMetadata            Json     @default("{}")
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  organization Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  player       Player?              @relation(fields: [playerId], references: [id], onDelete: SetNull)
+  source       ExternalSportsSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  team         Team?                @relation(fields: [teamId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, playerId])
+  @@index([sourceId, teamId, normalizedExternalName])
+}
+
+model ExternalGame {
+  id                      String             @id @default(cuid())
+  organizationId          String
+  sourceId                String?
+  teamId                  String
+  externalCalendarEventId String?
+  dedupeKey               String?            @unique
+  sport                   Sport
+  opponentName            String?
+  gameDate                DateTime?
+  startTime               DateTime?
+  status                  ExternalGameStatus @default(unknown)
+  sourceLabel             String?
+  rawMetadata             Json               @default("{}")
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
+
+  calendarEvent ExternalCalendarEvent? @relation(fields: [externalCalendarEventId], references: [id], onDelete: SetNull)
+  importBatches SportStatImportBatch[]
+  organization  Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  source        ExternalSportsSource?  @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+  statLines     PlayerGameStatLine[]
+  team          Team                   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, teamId, externalCalendarEventId])
+  @@index([organizationId, teamId, gameDate])
+  @@index([organizationId, status])
+}
+
+model SportStatImportBatch {
+  id               String                @id @default(cuid())
+  organizationId   String
+  sourceId         String?
+  teamId           String
+  externalGameId   String?
+  importedByUserId String?
+  sport            Sport
+  importScope      SportStatImportScope
+  status           SportStatImportStatus @default(needs_review)
+  originalFileName String?
+  fileSha256       String
+  dedupeKey        String
+  rowCount         Int
+  rejectedRowCount Int
+  importedAt       DateTime              @default(now())
+  rawMetadata      Json                  @default("{}")
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+
+  externalGame ExternalGame?         @relation(fields: [externalGameId], references: [id], onDelete: SetNull)
+  importedBy   UserProfile?          @relation("SportStatImportUser", fields: [importedByUserId], references: [id], onDelete: SetNull)
+  organization Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  seasonSnapshots PlayerSeasonStatSnapshot[]
+  source       ExternalSportsSource? @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+  statLines    PlayerGameStatLine[]
+  team         Team                  @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, dedupeKey])
+  @@index([organizationId, teamId, status])
+  @@index([organizationId, importedAt])
+}
+
+model PlayerGameStatLine {
+  id                           String                     @id @default(cuid())
+  organizationId               String
+  importBatchId                String
+  teamId                       String
+  externalGameId               String?
+  playerId                     String?
+  rowNumber                    Int
+  externalPlayerName           String
+  normalizedExternalPlayerName String
+  jerseyNumber                 String?
+  matchStatus                  PlayerStatLineReviewStatus @default(unmatched)
+  confidence                   Int
+  matchReason                  String
+  stats                        Json                       @default("{}")
+  rawMetadata                  Json                       @default("{}")
+  confirmedByUserId            String?
+  confirmedAt                  DateTime?
+  createdAt                    DateTime                   @default(now())
+  updatedAt                    DateTime                   @updatedAt
+
+  confirmedBy  UserProfile?          @relation("PlayerGameStatLineConfirmedBy", fields: [confirmedByUserId], references: [id], onDelete: SetNull)
+  externalGame ExternalGame?         @relation(fields: [externalGameId], references: [id], onDelete: SetNull)
+  importBatch  SportStatImportBatch  @relation(fields: [importBatchId], references: [id], onDelete: Cascade)
+  organization Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  player       Player?               @relation(fields: [playerId], references: [id], onDelete: SetNull)
+  team         Team                  @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([importBatchId, rowNumber])
+  @@index([organizationId, teamId, matchStatus])
+  @@index([organizationId, playerId])
+}
+
+model PlayerSeasonStatSnapshot {
+  id                           String   @id @default(cuid())
+  organizationId               String
+  importBatchId                String
+  teamId                       String
+  playerId                     String?
+  rowNumber                    Int
+  externalPlayerName           String
+  normalizedExternalPlayerName String
+  jerseyNumber                 String?
+  stats                        Json     @default("{}")
+  rawMetadata                  Json     @default("{}")
+  createdAt                    DateTime @default(now())
+  updatedAt                    DateTime @updatedAt
+
+  importBatch  SportStatImportBatch @relation(fields: [importBatchId], references: [id], onDelete: Cascade)
+  organization Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  player       Player?              @relation(fields: [playerId], references: [id], onDelete: SetNull)
+  team         Team                 @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([importBatchId, rowNumber])
+  @@index([organizationId, teamId, createdAt])
+  @@index([organizationId, playerId])
 }
 
 model TeamPlayer {

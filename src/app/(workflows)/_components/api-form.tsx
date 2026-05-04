@@ -11,6 +11,7 @@ type Field = {
   options?: string[];
   defaultValue?: string;
   array?: boolean;
+  json?: boolean;
   omitFromPayload?: boolean;
 };
 
@@ -30,6 +31,10 @@ function coerceValue(value: FormDataEntryValue, field: Field) {
     return value.toString() ? [value.toString()] : [];
   }
 
+  if (field.json) {
+    return value.toString() ? JSON.parse(value.toString()) : undefined;
+  }
+
   if (field.type === "number") {
     return value === "" ? undefined : Number(value);
   }
@@ -47,18 +52,18 @@ export function ApiForm({ title, description, endpoint, fields }: ApiFormProps) 
 
   async function submit(formData: FormData) {
     setIsSubmitting(true);
-    const rawValues = Object.fromEntries(formData.entries());
-    const payload = Object.fromEntries(
-      fields
-        .filter((field) => !field.omitFromPayload)
-        .map((field) => [field.name, coerceValue(rawValues[field.name] ?? "", field)])
-    );
-    const resolvedEndpoint = fields.reduce(
-      (path, field) => path.replaceAll(`{${field.name}}`, rawValues[field.name]?.toString() ?? ""),
-      endpoint
-    );
 
     try {
+      const rawValues = Object.fromEntries(formData.entries());
+      const payload = Object.fromEntries(
+        fields
+          .filter((field) => !field.omitFromPayload)
+          .map((field) => [field.name, coerceValue(rawValues[field.name] ?? "", field)])
+      );
+      const resolvedEndpoint = fields.reduce(
+        (path, field) => path.replaceAll(`{${field.name}}`, rawValues[field.name]?.toString() ?? ""),
+        endpoint
+      );
       const response = await fetch(resolvedEndpoint, {
         method: "POST",
         headers: {

@@ -189,7 +189,7 @@ jobs:
             echo "DATABASE_URL secret is not configured; migration gate cannot run yet."
             exit 1
           fi
-          echo "Prisma deploy command placeholder. Enable 'prisma migrate deploy' after migrations exist."
+          npm run prisma:migrate:deploy
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 

@@ -23,11 +23,15 @@ export function getRequestAccessContext(headers: Headers): RequestAccessContext 
     return null;
   }
 
-  const roles = splitHeader(headers.get("x-roles")).map((role) => roleSchema.parse(role));
+  const parsedRoles = splitHeader(headers.get("x-roles")).map((role) => roleSchema.safeParse(role));
+
+  if (parsedRoles.some((role) => !role.success)) {
+    return null;
+  }
 
   return {
     userId,
-    roles,
+    roles: parsedRoles.flatMap((role) => (role.success ? [role.data] : [])),
     userOrganizationIds: splitHeader(headers.get("x-org-ids")),
     assignedTeamIds: splitHeader(headers.get("x-team-ids")),
     linkedPlayerIds: splitHeader(headers.get("x-player-ids")),
@@ -37,4 +41,14 @@ export function getRequestAccessContext(headers: Headers): RequestAccessContext 
 
 export function shouldEnforceAuth() {
   return process.env.AUTH_ENFORCEMENT === "on";
+}
+
+export function getRequestActorId(headers: Headers, fallbackActorId?: string | null) {
+  const context = getRequestAccessContext(headers);
+
+  if (shouldEnforceAuth()) {
+    return context?.userId ?? null;
+  }
+
+  return fallbackActorId ?? context?.userId ?? null;
 }

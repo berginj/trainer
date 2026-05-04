@@ -41,7 +41,7 @@ Set these as GitHub environment secrets:
 The workflow includes placeholders that intentionally no-op or fail clearly until the related work is complete:
 
 - `infra/main.bicep` does not exist yet, so Bicep what-if/deploy steps skip with a clear message.
-- Prisma migrations do not exist yet, so the migration gate validates `DATABASE_URL` and logs the future `prisma migrate deploy` step.
+- Prisma migrations exist, so the migration gate runs `npm run prisma:migrate:deploy` when `DATABASE_URL` is configured.
 - Docker image validation will happen in GitHub-hosted runners even though Docker is not installed locally.
 
 ## OIDC Setup
@@ -63,7 +63,6 @@ Use least privilege for the federated identity. It needs only enough access to:
 1. Create Azure resources or add `infra/main.bicep`.
 2. Configure GitHub environments, variables, and secrets.
 3. Configure Entra federated credentials for GitHub OIDC.
-4. Add Prisma migration files and replace the migration placeholder with `npx prisma migrate deploy`.
+4. Configure the `DATABASE_URL` environment secret and verify `npm run prisma:migrate:deploy` succeeds for `dev`.
 5. Trigger `Azure Deploy` manually for `dev`.
 6. Verify `/api/health` and `/api/health/dependencies`.
-

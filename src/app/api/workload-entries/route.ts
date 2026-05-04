@@ -1,7 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { requirePlayerAccess, requireTeamEntryAccess } from "@/lib/auth-guards";
+import { requirePlayerDataEntryAccess, requireTeamEntryAccess } from "@/lib/auth-guards";
 import { writeAuditEvent } from "@/lib/audit";
 import { getPrisma } from "@/lib/db";
+import { getRequestActorId } from "@/lib/request-auth";
 import { parseJsonWithSchema } from "@/lib/route-utils";
 import { buildBaseballPitchCountAlert, buildSoftballExposureAlert, getAgeOnDate } from "@/lib/safety-rules";
 import { workloadEntryCreateSchema } from "@/lib/validation";
@@ -20,7 +21,7 @@ export async function POST(request: NextRequest) {
         organizationId: parsed.data.organizationId,
         teamId: parsed.data.teamId
       })
-    : requirePlayerAccess(request.headers, {
+    : requirePlayerDataEntryAccess(request.headers, {
         organizationId: parsed.data.organizationId,
         playerId: parsed.data.playerId,
         requiresConsent: true
@@ -31,12 +32,16 @@ export async function POST(request: NextRequest) {
   }
 
   const prisma = getPrisma();
+  const actorUserId = getRequestActorId(request.headers, parsed.data.enteredByUserId);
   const workloadEntry = await prisma.workloadEntry.create({
-    data: parsed.data
+    data: {
+      ...parsed.data,
+      enteredByUserId: actorUserId ?? parsed.data.enteredByUserId
+    }
   });
   await writeAuditEvent(prisma, {
     organizationId: parsed.data.organizationId,
-    actorUserId: parsed.data.enteredByUserId ?? null,
+    actorUserId,
     action: "workload_entry.created",
     entityType: "WorkloadEntry",
     entityId: workloadEntry.id,

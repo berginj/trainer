@@ -194,3 +194,95 @@ export const teamPlayerCreateSchema = z.object({
   teamId: z.string().min(1),
   playerId: z.string().min(1)
 });
+
+export const googleCalendarConnectSchema = z.object({
+  organizationId: z.string().min(1),
+  trainerUserId: z.string().min(1),
+  redirectUri: z.string().url()
+});
+
+export const googleCalendarSelectionSchema = z.object({
+  integrationId: z.string().min(1),
+  calendars: z.array(
+    z.object({
+      providerCalendarId: z.string().min(1),
+      summary: z.string().min(1),
+      description: z.string().optional(),
+      timeZone: z.string().optional(),
+      selectedForSync: z.boolean().default(true)
+    })
+  )
+});
+
+export const googleCalendarEventImportSchema = z.object({
+  organizationId: z.string().min(1),
+  trainerUserId: z.string().min(1),
+  integrationId: z.string().min(1),
+  calendarId: z.string().min(1),
+  events: z.array(z.record(z.string(), z.unknown()))
+});
+
+export const appointmentMatchUpdateSchema = z.object({
+  playerId: z.string().min(1).optional(),
+  status: z.enum(["matched", "ignored"]),
+  actorUserId: z.string().min(1).optional()
+});
+
+export const appointmentCreateAthleteSchema = z.object({
+  preferredName: z.string().min(1),
+  dateOfBirth: z.coerce.date(),
+  sexAtBirth: z.string().min(1).optional(),
+  sports: z.array(z.enum(["basketball", "baseball", "softball"])).default([]),
+  positions: z.array(z.string().min(1)).default([]),
+  actorUserId: z.string().min(1).optional()
+});
+
+export const appointmentChangeNoticeCreateSchema = z.object({
+  changeType: z.enum(["cancelled", "needs_reschedule"]),
+  reason: z.string().min(1),
+  customMessage: z.string().max(2000).optional(),
+  actorUserId: z.string().min(1).optional(),
+  oneOffAvailability: z
+    .array(
+      z.object({
+        startTime: z.string().min(1),
+        endTime: z.string().min(1),
+        label: z.string().min(1).optional()
+      })
+    )
+    .default([])
+});
+
+export const venmoImportSchema = z.object({
+  organizationId: z.string().min(1),
+  trainerUserId: z.string().min(1),
+  originalFileName: z.string().min(1).optional(),
+  csv: z.string().min(1)
+});
+
+export const paymentMatchUpdateSchema = z.object({
+  playerId: z.string().min(1).optional(),
+  status: z.enum(["matched", "ignored"]),
+  actorUserId: z.string().min(1).optional()
+});
+
+export const gameChangerStatsPreviewSchema = z.object({
+  organizationId: z.string().min(1),
+  teamId: z.string().min(1),
+  sport: z.enum(["baseball", "softball", "basketball"]),
+  importScope: z.enum(["game_filtered", "season_totals"]),
+  sourceName: z.string().min(1).optional(),
+  originalFileName: z.string().min(1).optional(),
+  gameDate: z.coerce.date().optional(),
+  csv: z.string().min(1)
+});
+
+export const gameChangerStatsImportSchema = gameChangerStatsPreviewSchema.extend({
+  importedByUserId: z.string().min(1).optional()
+});
+
+export const gameChangerStatLineMatchUpdateSchema = z.object({
+  playerId: z.string().min(1).optional(),
+  status: z.enum(["matched", "ignored"]),
+  actorUserId: z.string().min(1).optional()
+});

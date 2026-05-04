@@ -8,6 +8,8 @@ Youth training and performance tracking platform planning repo.
 - [Build and deployment plan](BUILD_DEPLOYMENT_PLAN.md)
 - [Backlog](BACKLOG.md)
 - [Azure deployment setup](docs/azure-deployment.md)
+- [Cosmos DB provisioning](docs/cosmosdb-provisioning.md)
+- [GameChanger data integration plan](docs/gamechanger-data-plan.md)
 
 ## Development
 

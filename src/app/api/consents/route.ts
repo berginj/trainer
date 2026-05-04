@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { requireConsentRecordAccess } from "@/lib/auth-guards";
 import { writeAuditEvent } from "@/lib/audit";
 import { getPrisma } from "@/lib/db";
+import { getRequestActorId } from "@/lib/request-auth";
 import { parseJsonWithSchema } from "@/lib/route-utils";
 import { consentRecordUpsertSchema } from "@/lib/validation";
 
@@ -11,6 +13,16 @@ export async function POST(request: NextRequest) {
 
   if (parsed.response) {
     return parsed.response;
+  }
+
+  const forbidden = requireConsentRecordAccess(request.headers, {
+    organizationId: parsed.data.organizationId,
+    playerId: parsed.data.playerId,
+    guardianUserId: parsed.data.guardianUserId
+  });
+
+  if (forbidden) {
+    return forbidden;
   }
 
   const prisma = getPrisma();
@@ -24,7 +36,7 @@ export async function POST(request: NextRequest) {
 
   await writeAuditEvent(prisma, {
     organizationId: parsed.data.organizationId,
-    actorUserId: parsed.data.guardianUserId,
+    actorUserId: getRequestActorId(request.headers, parsed.data.guardianUserId),
     action: `consent.${parsed.data.status}`,
     entityType: "ConsentRecord",
     entityId: consentRecord.id,

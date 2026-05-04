@@ -1,8 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
+import { requirePlayerDataEntryAccess } from "@/lib/auth-guards";
 import { validationErrorResponse } from "@/lib/api-response";
 import { writeAuditEvent } from "@/lib/audit";
 import { getPrisma } from "@/lib/db";
+import { getRequestActorId } from "@/lib/request-auth";
 import {
   buildBaselineMissingFlag,
   buildBenchmarkConfidenceFlag,
@@ -24,6 +26,16 @@ export async function POST(request: NextRequest) {
 
   if (!parsed.success) {
     return validationErrorResponse(parsed.error);
+  }
+
+  const forbidden = requirePlayerDataEntryAccess(request.headers, {
+    organizationId: parsed.data.organizationId,
+    playerId: parsed.data.playerId,
+    requiresConsent: true
+  });
+
+  if (forbidden) {
+    return forbidden;
   }
 
   const prisma = getPrisma();
@@ -107,7 +119,7 @@ export async function POST(request: NextRequest) {
 
   await writeAuditEvent(prisma, {
     organizationId: parsed.data.organizationId,
-    actorUserId: parsed.data.actorUserId ?? null,
+    actorUserId: getRequestActorId(request.headers, parsed.data.actorUserId),
     action: "alerts.recomputed",
     entityType: "Player",
     entityId: parsed.data.playerId,

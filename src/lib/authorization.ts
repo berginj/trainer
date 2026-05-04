@@ -17,7 +17,7 @@ type ResourceContext = {
 };
 
 const platformRoles = new Set<Role>(["platform_admin"]);
-const organizationAdminRoles = new Set<Role>(["org_admin", "league_admin"]);
+const organizationAdminRoles = new Set<Role>(["org_admin"]);
 const teamRoles = new Set<Role>(["team_coach", "assistant_coach", "evaluator"]);
 const guardianPlayerRoles = new Set<Role>(["guardian", "player"]);
 
@@ -64,6 +64,44 @@ export function canManageOrganization(user: AccessContext, organizationId: strin
   return user.roles.includes("org_admin") && user.userOrganizationIds.includes(organizationId);
 }
 
+export function canManagePlatform(user: AccessContext): boolean {
+  return user.roles.includes("platform_admin");
+}
+
+export function canManageConsent(
+  user: AccessContext,
+  resource: Required<Pick<ResourceContext, "organizationId" | "playerId">> & { guardianUserId: string }
+): boolean {
+  if (!hasTenantAccess(user, resource)) {
+    return false;
+  }
+
+  if (user.roles.some((role) => platformRoles.has(role) || organizationAdminRoles.has(role))) {
+    return true;
+  }
+
+  return Boolean(
+    user.userId === resource.guardianUserId &&
+      user.linkedPlayerIds?.includes(resource.playerId) &&
+      user.roles.includes("guardian")
+  );
+}
+
+export function canActForOrganizationUser(
+  user: AccessContext,
+  resource: Required<Pick<ResourceContext, "organizationId">> & { targetUserId: string }
+): boolean {
+  if (!hasTenantAccess(user, resource)) {
+    return false;
+  }
+
+  if (user.roles.some((role) => platformRoles.has(role) || organizationAdminRoles.has(role))) {
+    return true;
+  }
+
+  return user.userId === resource.targetUserId;
+}
+
 export function canEnterTeamData(
   user: AccessContext,
   resource: Required<Pick<ResourceContext, "organizationId" | "teamId">>
@@ -79,5 +117,43 @@ export function canEnterTeamData(
   return Boolean(
     user.assignedTeamIds?.includes(resource.teamId) &&
       user.roles.some((role) => role === "team_coach" || role === "assistant_coach" || role === "evaluator")
+  );
+}
+
+export function canEnterPlayerData(
+  user: AccessContext,
+  resource: Required<Pick<ResourceContext, "organizationId" | "playerId">> &
+    Pick<ResourceContext, "teamId" | "requiresConsent"> & {
+      allowLinkedUserEntry?: boolean;
+    }
+): boolean {
+  if (!hasTenantAccess(user, resource)) {
+    return false;
+  }
+
+  if (resource.requiresConsent && !user.consentGranted) {
+    return false;
+  }
+
+  if (user.roles.some((role) => platformRoles.has(role) || organizationAdminRoles.has(role))) {
+    return true;
+  }
+
+  if (
+    resource.teamId &&
+    user.assignedTeamIds?.includes(resource.teamId) &&
+    user.roles.some((role) => teamRoles.has(role))
+  ) {
+    return true;
+  }
+
+  if (!resource.teamId && user.roles.includes("evaluator")) {
+    return true;
+  }
+
+  return Boolean(
+    resource.allowLinkedUserEntry &&
+      user.linkedPlayerIds?.includes(resource.playerId) &&
+      user.roles.some((role) => guardianPlayerRoles.has(role))
   );
 }

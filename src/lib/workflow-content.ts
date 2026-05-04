@@ -54,6 +54,36 @@ export const workflowCards = [
     summary: "Record minutes, RPE, participation, throws, pitches, innings, and workload alerts."
   },
   {
+    href: "/calendar-sync",
+    title: "Calendar sync",
+    eyebrow: "Trainer",
+    summary: "Connect Google Calendar, select calendars, and import appointments for athlete matching."
+  },
+  {
+    href: "/appointments/review",
+    title: "Appointment review",
+    eyebrow: "Trainer",
+    summary: "Confirm, override, create, or ignore athlete matches from imported calendar events."
+  },
+  {
+    href: "/schedule-changes",
+    title: "Schedule changes",
+    eyebrow: "Trainer",
+    summary: "Prepare cancellation or reschedule notices with one-off make-up availability."
+  },
+  {
+    href: "/payments/venmo",
+    title: "Venmo reconciliation",
+    eyebrow: "Payments",
+    summary: "Import Venmo CSV logs and reconcile transactions to athletes without scraping."
+  },
+  {
+    href: "/gamechanger",
+    title: "GameChanger stats",
+    eyebrow: "Sports data",
+    summary: "Preview official GameChanger CSV exports and match stat rows to team athletes."
+  },
+  {
     href: "/routines",
     title: "Routines",
     eyebrow: "Home plan",
@@ -84,5 +114,6 @@ export const doneChecklist = [
   "Pain and workload alerts explain why they fired and what safe action should happen next.",
   "Benchmark and ranking behavior is driven by MetricDefinition metadata.",
   "Reports store immutable snapshots rather than recalculating historical summaries.",
+  "External calendar and payment imports keep tenant, trainer, and athlete boundaries explicit.",
   "No MVP screen presents diagnosis, return-to-play decisions, public rankings, or talent scores."
 ] as const;

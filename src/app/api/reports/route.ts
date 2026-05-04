@@ -5,6 +5,7 @@ import { writeAuditEvent } from "@/lib/audit";
 import { apiErrorResponse } from "@/lib/api-response";
 import { getPrisma } from "@/lib/db";
 import { buildMonthlyPlayerReportSnapshot } from "@/lib/reports";
+import { getRequestActorId } from "@/lib/request-auth";
 
 export const runtime = "nodejs";
 
@@ -38,6 +39,8 @@ export async function POST(request: NextRequest) {
     return authResponse;
   }
 
+  const actorUserId = getRequestActorId(request.headers, body.generatedByUserId);
+
   const [readinessCount, workloadCount, openAlertCount, routineCompletionCount] = await Promise.all([
     prisma.readinessCheck.count({ where: { organizationId: body.organizationId, playerId: body.playerId } }),
     prisma.workloadEntry.count({ where: { organizationId: body.organizationId, playerId: body.playerId } }),
@@ -60,14 +63,14 @@ export async function POST(request: NextRequest) {
       organizationId: body.organizationId,
       playerId: body.playerId,
       reportType: "monthly_player",
-      generatedByUserId: body.generatedByUserId,
+      generatedByUserId: actorUserId ?? body.generatedByUserId,
       snapshotPayload: snapshotPayload as Prisma.InputJsonValue
     }
   });
 
   await writeAuditEvent(prisma, {
     organizationId: body.organizationId,
-    actorUserId: body.generatedByUserId ?? null,
+    actorUserId,
     action: "report.generated",
     entityType: "Report",
     entityId: report.id,

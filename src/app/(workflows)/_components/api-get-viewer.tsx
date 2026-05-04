@@ -8,10 +8,23 @@ type ApiGetViewerProps = {
   endpointTemplate: string;
   idLabel: string;
   idPlaceholder: string;
+  extraFields?: Array<{
+    name: string;
+    label: string;
+    placeholder?: string;
+  }>;
 };
 
-export function ApiGetViewer({ title, description, endpointTemplate, idLabel, idPlaceholder }: ApiGetViewerProps) {
+export function ApiGetViewer({
+  title,
+  description,
+  endpointTemplate,
+  idLabel,
+  idPlaceholder,
+  extraFields = []
+}: ApiGetViewerProps) {
   const [id, setId] = useState("");
+  const [extraValues, setExtraValues] = useState<Record<string, string>>({});
   const [result, setResult] = useState("Not loaded.");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -19,7 +32,11 @@ export function ApiGetViewer({ title, description, endpointTemplate, idLabel, id
     setIsLoading(true);
 
     try {
-      const response = await fetch(endpointTemplate.replace("{id}", encodeURIComponent(id)));
+      const resolvedEndpoint = extraFields.reduce(
+        (path, field) => path.replaceAll(`{${field.name}}`, encodeURIComponent(extraValues[field.name] ?? "")),
+        endpointTemplate.replace("{id}", encodeURIComponent(id))
+      );
+      const response = await fetch(resolvedEndpoint);
       const body = (await response.json()) as unknown;
       setResult(JSON.stringify(body, null, 2));
     } catch (error) {
@@ -42,6 +59,17 @@ export function ApiGetViewer({ title, description, endpointTemplate, idLabel, id
           value={id}
         />
       </label>
+      {extraFields.map((field) => (
+        <label className="mt-4 flex flex-col gap-2 font-bold" key={field.name}>
+          {field.label}
+          <input
+            className="rounded-xl border border-[color:var(--accent)]/20 bg-white p-3 font-normal"
+            onChange={(event) => setExtraValues((current) => ({ ...current, [field.name]: event.target.value }))}
+            placeholder={field.placeholder}
+            value={extraValues[field.name] ?? ""}
+          />
+        </label>
+      ))}
       <button
         className="mt-5 rounded-full bg-[color:var(--accent-strong)] px-5 py-3 font-bold text-white disabled:opacity-60"
         disabled={isLoading || !id}
