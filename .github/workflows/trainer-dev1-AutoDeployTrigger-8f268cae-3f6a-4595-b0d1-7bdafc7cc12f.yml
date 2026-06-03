@@ -43,6 +43,18 @@ jobs:
           tenant-id: ${{ secrets.TRAINERDEV1_AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.TRAINERDEV1_AZURE_SUBSCRIPTION_ID }}
 
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npm run prisma:generate
+
       - name: Build image in Azure Container Registry
         run: |
           az acr build \
@@ -50,6 +62,24 @@ jobs:
             --image "$CONTAINER_APP_NAME:${DEPLOY_SHA}" \
             --file Dockerfile \
             .
+
+      - name: Run database migrations
+        shell: bash
+        run: |
+          set -euo pipefail
+          DATABASE_URL="$(az containerapp secret show \
+            --name "$CONTAINER_APP_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --secret-name database-url \
+            --query value \
+            --output tsv)"
+          if [ -z "$DATABASE_URL" ]; then
+            echo "Container App database-url secret is empty; refusing to deploy without migrations."
+            exit 1
+          fi
+          echo "::add-mask::$DATABASE_URL"
+          export DATABASE_URL
+          npm run prisma:migrate:deploy
 
       - name: Deploy Container App revision
         run: |

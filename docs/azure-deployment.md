@@ -31,6 +31,7 @@ Set these as GitHub environment variables for each environment:
 | `APP_BASE_URL` | Public app base URL for smoke tests. |
 | `GOOGLE_AUTH_CLIENT_ID` | Google OAuth client ID for guardian/coach sign-in. |
 | `MICROSOFT_AUTH_CLIENT_ID` | Microsoft identity client ID configured for personal Microsoft accounts. |
+| `ALERT_EMAIL_ADDRESS` | Optional Azure Monitor action group email receiver. Leave blank to create alerts without email receivers. |
 
 ## Required Secrets
 
@@ -49,11 +50,11 @@ Set these as GitHub environment secrets:
 
 - The application runtime is Node.js 24. Docker uses `node:24-alpine`, CI uses `actions/setup-node` with Node 24, and GitHub JavaScript actions opt into Node 24 with `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24`.
 - Deployed Container App revisions run with `AUTH_ENFORCEMENT=on`; local development headers are only for non-production runs with enforcement disabled.
-- `infra/main.bicep` provisions the single-environment MVP stack: ACR, Container Apps, PostgreSQL, Key Vault, Log Analytics, and Application Insights.
+- `infra/main.bicep` provisions the single-environment stack: ACR, Container Apps, PostgreSQL, Key Vault, Blob Storage, Service Bus, App Configuration, Front Door/WAF, Log Analytics, Application Insights, and basic Azure Monitor metric alerts.
 - Prisma migrations exist, so the migration gate runs `npm run prisma:migrate:deploy` when `DATABASE_URL` is configured.
 - Docker image validation happens in GitHub-hosted runners and ACR remote builds.
 - CI can run PostgreSQL-backed route tests when `TEST_DATABASE_URL` is configured as a GitHub secret; otherwise that suite is skipped.
-- Blob Storage, Service Bus, App Configuration, Front Door/WAF, and full Azure Monitor alerting remain backlog items.
+- The dev auto-deploy workflow runs Prisma migrations from the existing Container App `database-url` secret before app rollout. The manual `Azure Deploy` workflow remains the path for applying infrastructure changes.
 
 ## OIDC Setup
 
@@ -83,12 +84,12 @@ Use least privilege for the federated identity. It needs only enough access to:
 
 ## Current Verification Snapshot
 
-As of June 2, 2026:
+As of June 3, 2026:
 
 - `trainer-dev1` is running in Azure Container Apps and public `/api/health` and `/api/health/dependencies` return HTTP 200.
-- Database dependency health is OK; storage and queue dependencies are expected to report `not_configured` until those services are added.
+- Database dependency health is OK. Storage, queue, App Configuration, and monitoring checks report configured after the Bicep infrastructure rollout adds their environment settings.
 - Local Playwright now passes after preserving the `/routines` assignment success message through refresh.
-- The dev auto-deploy workflow for `a34a67d` completed successfully and Azure Container Apps is serving revision `trainer-dev1--0000021` with image tag `a34a67d6275d646aa99dafdab2651e33a7a9fb17`.
+- The dev auto-deploy workflow for `33ec537` completed successfully and Azure Container Apps is serving revision `trainer-dev1--0000022` with image tag `33ec53771dc867efce27fcd9866aaec726ddc568`.
 - Future pushes to `main` deploy only after CI succeeds; deployed smoke checks cover `/api/health`, `/api/health/dependencies`, `/signin`, `/guardian/home`, and `/routines`.
 
 ## Operations

@@ -148,7 +148,8 @@ jobs:
               "googleAuthClientId=${GOOGLE_AUTH_CLIENT_ID}" \
               "googleAuthClientSecret=${GOOGLE_AUTH_CLIENT_SECRET}" \
               "microsoftAuthClientId=${MICROSOFT_AUTH_CLIENT_ID}" \
-              "microsoftAuthClientSecret=${MICROSOFT_AUTH_CLIENT_SECRET}"
+              "microsoftAuthClientSecret=${MICROSOFT_AUTH_CLIENT_SECRET}" \
+              "alertEmailAddress=${ALERT_EMAIL_ADDRESS}"
         env:
           RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
           ENVIRONMENT_NAME: ${{ inputs.environment }}
@@ -161,6 +162,7 @@ jobs:
           GOOGLE_AUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_AUTH_CLIENT_SECRET }}
           MICROSOFT_AUTH_CLIENT_ID: ${{ vars.MICROSOFT_AUTH_CLIENT_ID }}
           MICROSOFT_AUTH_CLIENT_SECRET: ${{ secrets.MICROSOFT_AUTH_CLIENT_SECRET }}
+          ALERT_EMAIL_ADDRESS: ${{ vars.ALERT_EMAIL_ADDRESS }}
 
       - name: Deploy Bicep
         shell: bash
@@ -179,7 +181,8 @@ jobs:
               "googleAuthClientId=${GOOGLE_AUTH_CLIENT_ID}" \
               "googleAuthClientSecret=${GOOGLE_AUTH_CLIENT_SECRET}" \
               "microsoftAuthClientId=${MICROSOFT_AUTH_CLIENT_ID}" \
-              "microsoftAuthClientSecret=${MICROSOFT_AUTH_CLIENT_SECRET}"
+              "microsoftAuthClientSecret=${MICROSOFT_AUTH_CLIENT_SECRET}" \
+              "alertEmailAddress=${ALERT_EMAIL_ADDRESS}"
         env:
           RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
           ENVIRONMENT_NAME: ${{ inputs.environment }}
@@ -192,6 +195,7 @@ jobs:
           GOOGLE_AUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_AUTH_CLIENT_SECRET }}
           MICROSOFT_AUTH_CLIENT_ID: ${{ vars.MICROSOFT_AUTH_CLIENT_ID }}
           MICROSOFT_AUTH_CLIENT_SECRET: ${{ secrets.MICROSOFT_AUTH_CLIENT_SECRET }}
+          ALERT_EMAIL_ADDRESS: ${{ vars.ALERT_EMAIL_ADDRESS }}
 
   migration-gate:
     name: Migration Gate

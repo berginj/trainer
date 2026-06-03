@@ -17,7 +17,7 @@ az containerapp revision list --name trainer-dev1 --resource-group rg-trainer-de
 node -e "fetch('https://trainer-dev1.greenground-5002c3bc.eastus2.azurecontainerapps.io/api/health/dependencies').then(async r=>{console.log(r.status); console.log(await r.text())})"
 ```
 
-Expected result: the latest revision has `trafficWeight` 100 and dependency health returns `status: ok`. Blob Storage and Service Bus may report `not_configured` until those backlog items are rolled out.
+Expected result: the latest revision has `trafficWeight` 100 and dependency health returns `status: ok`. Storage, queue, App Configuration, and monitoring checks report configured after the Bicep infrastructure rollout adds their environment settings.
 
 Also check the GitHub verification gates before treating a revision as releasable:
 
@@ -30,7 +30,7 @@ npm run build
 npm run test:e2e
 ```
 
-`npm run test:integration:db` requires `TEST_DATABASE_URL`; when that environment variable is absent, the DB-backed route suite is skipped. As of June 2, 2026, local typecheck, lint, unit tests, build, and Playwright E2E pass after the `/routines` success-message fix.
+`npm run test:integration:db` requires `TEST_DATABASE_URL`; when that environment variable is absent, the DB-backed route suite is skipped. As of June 3, 2026, local typecheck, lint, unit tests, Prisma validation, Bicep build, and production build pass after the auth hardening and infrastructure updates.
 
 The app runtime target is Node.js 24. If GitHub emits JavaScript action runtime warnings, confirm the workflow has `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true` and that `actions/setup-node` uses Node 24.
 
@@ -92,7 +92,7 @@ Use when private player data may have been exposed.
 
 Service Bus is not configured in the current dev environment, so there is no live DLQ to replay.
 
-When Service Bus is added:
+When Service Bus is deployed and connected:
 
 1. Inspect DLQ message count and oldest enqueue time.
 2. Export a sample payload before replay.
