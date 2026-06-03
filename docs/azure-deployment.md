@@ -47,6 +47,7 @@ Set these as GitHub environment secrets:
 
 ## Current Infrastructure Coverage
 
+- The application runtime is Node.js 24. Docker uses `node:24-alpine`, CI uses `actions/setup-node` with Node 24, and GitHub JavaScript actions opt into Node 24 with `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24`.
 - `infra/main.bicep` provisions the single-environment MVP stack: ACR, Container Apps, PostgreSQL, Key Vault, Log Analytics, and Application Insights.
 - Prisma migrations exist, so the migration gate runs `npm run prisma:migrate:deploy` when `DATABASE_URL` is configured.
 - Docker image validation happens in GitHub-hosted runners and ACR remote builds.
@@ -86,7 +87,7 @@ As of June 2, 2026:
 - `trainer-dev1` is running in Azure Container Apps and public `/api/health` and `/api/health/dependencies` return HTTP 200.
 - Database dependency health is OK; storage and queue dependencies are expected to report `not_configured` until those services are added.
 - Local Playwright now passes after preserving the `/routines` assignment success message through refresh.
-- The dev auto-deploy workflow for `bf663b2` completed successfully and Azure Container Apps is serving revision `trainer-dev1--0000020` with image tag `bf663b2658e14b2626ed70f02ccfe2ce4fb48ed8`.
+- The dev auto-deploy workflow for `a34a67d` completed successfully and Azure Container Apps is serving revision `trainer-dev1--0000021` with image tag `a34a67d6275d646aa99dafdab2651e33a7a9fb17`.
 - Future pushes to `main` deploy only after CI succeeds; deployed smoke checks cover `/api/health`, `/api/health/dependencies`, `/signin`, `/guardian/home`, and `/routines`.
 
 ## Operations

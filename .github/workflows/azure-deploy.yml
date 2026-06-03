@@ -28,6 +28,7 @@ permissions:
 
 env:
   NODE_VERSION: "24"
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   IMAGE_TAG: ${{ inputs.image_tag || github.sha }}
 
 jobs:

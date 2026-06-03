@@ -16,6 +16,8 @@ Youth training and performance tracking platform for team onboarding, athlete sa
 
 ## Development
 
+Use Node.js 24. The repo includes `.nvmrc`, `.node-version`, Docker images, and GitHub workflows pinned to Node 24.
+
 ```powershell
 npm install
 npm run typecheck
@@ -39,7 +41,7 @@ The dev Azure Container App is available at:
 https://trainer-dev1.greenground-5002c3bc.eastus2.azurecontainerapps.io
 ```
 
-As of June 2, 2026, the deployed service health endpoints return HTTP 200, database dependency health is OK, and Azure Container Apps is serving revision `trainer-dev1--0000020` from commit `bf663b2`. Local Playwright smoke coverage is green after the `/routines` assignment success-message fix; deploys from `main` are gated behind successful CI before the dev auto-deploy workflow runs.
+As of June 2, 2026, the deployed service health endpoints return HTTP 200, database dependency health is OK, and Azure Container Apps is serving revision `trainer-dev1--0000021` from commit `a34a67d`. Local Playwright smoke coverage is green after the `/routines` assignment success-message fix; deploys from `main` are gated behind successful CI before the dev auto-deploy workflow runs.
 
 ## Database
 

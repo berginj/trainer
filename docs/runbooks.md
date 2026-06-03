@@ -32,6 +32,8 @@ npm run test:e2e
 
 `npm run test:integration:db` requires `TEST_DATABASE_URL`; when that environment variable is absent, the DB-backed route suite is skipped. As of June 2, 2026, local typecheck, lint, unit tests, build, and Playwright E2E pass after the `/routines` success-message fix.
 
+The app runtime target is Node.js 24. If GitHub emits JavaScript action runtime warnings, confirm the workflow has `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true` and that `actions/setup-node` uses Node 24.
+
 ## Rollback
 
 Use this when the latest revision is unhealthy or a production workflow is broken.

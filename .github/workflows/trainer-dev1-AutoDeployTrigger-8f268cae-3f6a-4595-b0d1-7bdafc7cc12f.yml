@@ -15,6 +15,7 @@ permissions:
   id-token: write
 
 env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   ACR_NAME: trainerdevacr
   ACR_LOGIN_SERVER: trainerdevacr.azurecr.io
   CONTAINER_APP_NAME: trainer-dev1
