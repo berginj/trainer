@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:e2e": "playwright test",
+    "test:integration:db": "vitest run tests/integration/db-backed-routes.test.ts",
     "test:watch": "vitest",
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:validate": "prisma validate",

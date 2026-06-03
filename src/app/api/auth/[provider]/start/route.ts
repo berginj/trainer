@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import type { AuthProvider } from "@prisma/client";
 import { apiErrorResponse } from "@/lib/api-response";
-import { buildOAuthAuthorizationUrl, createOAuthStateCookie } from "@/lib/auth-session";
+import { buildOAuthAuthorizationUrl, createOAuthStateCookie, normalizeOAuthReturnTo } from "@/lib/auth-session";
 
 export const runtime = "nodejs";
 
@@ -29,7 +29,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ pro
   }
 
   const redirectUri = new URL(`/api/auth/${provider}/callback`, getPublicOrigin(request)).toString();
-  const returnTo = request.nextUrl.searchParams.get("returnTo") ?? "/";
+  const returnTo = normalizeOAuthReturnTo(request.nextUrl.searchParams.get("returnTo"));
   const inviteToken = request.nextUrl.searchParams.get("invite") ?? undefined;
   const { state, cookie } = createOAuthStateCookie({
     provider,

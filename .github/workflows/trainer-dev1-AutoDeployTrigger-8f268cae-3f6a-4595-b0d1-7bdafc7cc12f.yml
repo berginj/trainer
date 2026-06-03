@@ -1,12 +1,13 @@
 name: Trigger auto deployment for trainer-dev1
 
 on:
-  push:
+  workflow_run:
+    workflows:
+      - CI
+    types:
+      - completed
     branches:
       - main
-    paths:
-      - "**"
-      - ".github/workflows/trainer-dev1-AutoDeployTrigger-8f268cae-3f6a-4595-b0d1-7bdafc7cc12f.yml"
   workflow_dispatch:
 
 permissions:
@@ -18,14 +19,21 @@ env:
   ACR_LOGIN_SERVER: trainerdevacr.azurecr.io
   CONTAINER_APP_NAME: trainer-dev1
   RESOURCE_GROUP: rg-trainer-dev
+  APP_BASE_URL: https://trainer-dev1.greenground-5002c3bc.eastus2.azurecontainerapps.io
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
 
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Resolve deploy SHA
+        run: echo "DEPLOY_SHA=${{ github.event.workflow_run.head_sha || github.sha }}" >> "$GITHUB_ENV"
 
       - name: Azure login
         uses: azure/login@v2
@@ -38,7 +46,7 @@ jobs:
         run: |
           az acr build \
             --registry "$ACR_NAME" \
-            --image "$CONTAINER_APP_NAME:${GITHUB_SHA}" \
+            --image "$CONTAINER_APP_NAME:${DEPLOY_SHA}" \
             --file Dockerfile \
             .
 
@@ -47,7 +55,7 @@ jobs:
           az containerapp update \
             --name "$CONTAINER_APP_NAME" \
             --resource-group "$RESOURCE_GROUP" \
-            --image "$ACR_LOGIN_SERVER/$CONTAINER_APP_NAME:${GITHUB_SHA}" \
+            --image "$ACR_LOGIN_SERVER/$CONTAINER_APP_NAME:${DEPLOY_SHA}" \
             --set-env-vars \
               NODE_ENV=production \
               AUTH_ENFORCEMENT=off \
@@ -60,3 +68,12 @@ jobs:
               SEED_CYCLONES_MVP=off \
             --min-replicas 1 \
             --max-replicas 1
+
+      - name: Smoke deployed app
+        run: |
+          set -euo pipefail
+          curl --fail --show-error --silent "$APP_BASE_URL/api/health"
+          curl --fail --show-error --silent "$APP_BASE_URL/api/health/dependencies"
+          curl --fail --show-error --silent "$APP_BASE_URL/signin" > /dev/null
+          curl --fail --show-error --silent "$APP_BASE_URL/guardian/home" > /dev/null
+          curl --fail --show-error --silent "$APP_BASE_URL/routines" > /dev/null

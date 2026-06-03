@@ -1,6 +1,8 @@
 # Azure Deployment Workflow Setup
 
-The deployment workflow is `.github/workflows/azure-deploy.yml`. It is manually triggered with `workflow_dispatch` and is safe to keep in the repo before Azure resources exist.
+The primary release workflow is `.github/workflows/azure-deploy.yml`. It is manually triggered with `workflow_dispatch` and runs verification, Bicep deployment, image build/push, migration gate, Container App rollout, and public smoke checks.
+
+The repository also contains `.github/workflows/trainer-dev1-AutoDeployTrigger-8f268cae-3f6a-4595-b0d1-7bdafc7cc12f.yml`, an Azure-generated dev auto-deploy workflow for `trainer-dev1`. It now deploys `main` only after the `CI` workflow completes successfully, while retaining `workflow_dispatch` for manual dev rollouts.
 
 ## Required GitHub Environments
 
@@ -43,13 +45,13 @@ Set these as GitHub environment secrets:
 | `GOOGLE_AUTH_CLIENT_SECRET` | Google OAuth client secret. |
 | `MICROSOFT_AUTH_CLIENT_SECRET` | Microsoft OAuth client secret. |
 
-## Current Placeholders
-
-The workflow includes placeholders that intentionally no-op or fail clearly until the related work is complete:
+## Current Infrastructure Coverage
 
 - `infra/main.bicep` provisions the single-environment MVP stack: ACR, Container Apps, PostgreSQL, Key Vault, Log Analytics, and Application Insights.
 - Prisma migrations exist, so the migration gate runs `npm run prisma:migrate:deploy` when `DATABASE_URL` is configured.
-- Docker image validation will happen in GitHub-hosted runners even though Docker is not installed locally.
+- Docker image validation happens in GitHub-hosted runners and ACR remote builds.
+- CI can run PostgreSQL-backed route tests when `TEST_DATABASE_URL` is configured as a GitHub secret; otherwise that suite is skipped.
+- Blob Storage, Service Bus, App Configuration, Front Door/WAF, and full Azure Monitor alerting remain backlog items.
 
 ## OIDC Setup
 
@@ -76,6 +78,16 @@ Use least privilege for the federated identity. It needs only enough access to:
 5. Set or confirm the `DATABASE_URL` environment secret and verify `npm run prisma:migrate:deploy` succeeds for `dev`.
 6. Run `SEED_CYCLONES_MVP=on npm run prisma:seed` against the Azure database when you want the Cyclones organization/team bootstrap.
 7. Verify `/api/health`, `/api/health/dependencies`, `/signin`, `/routines`, and `/guardian/home`.
+
+## Current Verification Snapshot
+
+As of June 2, 2026:
+
+- `trainer-dev1` is running in Azure Container Apps and public `/api/health` and `/api/health/dependencies` return HTTP 200.
+- Database dependency health is OK; storage and queue dependencies are expected to report `not_configured` until those services are added.
+- Local Playwright now passes after preserving the `/routines` assignment success message through refresh.
+- The dev auto-deploy workflow for `bf663b2` completed successfully and Azure Container Apps is serving revision `trainer-dev1--0000020` with image tag `bf663b2658e14b2626ed70f02ccfe2ce4fb48ed8`.
+- Future pushes to `main` deploy only after CI succeeds; deployed smoke checks cover `/api/health`, `/api/health/dependencies`, `/signin`, `/guardian/home`, and `/routines`.
 
 ## Operations
 

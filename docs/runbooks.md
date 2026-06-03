@@ -19,6 +19,19 @@ node -e "fetch('https://trainer-dev1.greenground-5002c3bc.eastus2.azurecontainer
 
 Expected result: the latest revision has `trafficWeight` 100 and dependency health returns `status: ok`. Blob Storage and Service Bus may report `not_configured` until those backlog items are rolled out.
 
+Also check the GitHub verification gates before treating a revision as releasable:
+
+```powershell
+gh run list --limit 5
+npm run typecheck
+npm test
+npm run test:integration:db
+npm run build
+npm run test:e2e
+```
+
+`npm run test:integration:db` requires `TEST_DATABASE_URL`; when that environment variable is absent, the DB-backed route suite is skipped. As of June 2, 2026, local typecheck, lint, unit tests, build, and Playwright E2E pass after the `/routines` success-message fix.
+
 ## Rollback
 
 Use this when the latest revision is unhealthy or a production workflow is broken.
@@ -90,6 +103,8 @@ Common failure modes:
 
 - `az acr build` may fail locally on Windows while streaming logs because the Azure CLI cannot encode a Unicode checkmark. If the run was queued, poll ACR run status before retrying.
 - `npm ci` inside ACR can fail with transient network `ECONNRESET`. Retry with a new immutable tag.
+- GitHub CI can fail after local unit/build checks if Playwright catches client-side message or navigation regressions. Inspect `gh run view <run-id> --log-failed` before retrying.
+- The dev auto-deploy workflow is triggered by successful `CI` completion on `main`; if no deployment starts after a push, inspect the latest `CI` run first.
 - If Container App starts but dependency health fails database, verify the `database-url` secret and PostgreSQL firewall/private access settings.
 
 ## Fielding Checklist

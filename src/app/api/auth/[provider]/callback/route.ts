@@ -6,6 +6,7 @@ import {
   clearOAuthStateCookie,
   createSignedSessionCookie,
   exchangeOAuthCode,
+  normalizeOAuthReturnTo,
   parseOAuthState
 } from "@/lib/auth-session";
 import { getPrisma } from "@/lib/db";
@@ -62,7 +63,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ pro
     );
   }
 
-  const response = NextResponse.redirect(new URL(state.returnTo ?? "/", getPublicOrigin(request)));
+  const response = NextResponse.redirect(new URL(normalizeOAuthReturnTo(state.returnTo), getPublicOrigin(request)));
 
   response.headers.append("set-cookie", createSignedSessionCookie(contextForSession));
   response.headers.append("set-cookie", clearOAuthStateCookie());

@@ -152,7 +152,7 @@ export function createOAuthStateCookie(input: { provider: AuthProvider; returnTo
 export function parseOAuthState(cookieHeader: string | null, state: string | null) {
   const cookie = readCookie(cookieHeader, oauthStateCookieName);
 
-  if (!state) {
+  if (!state || !cookie || cookie !== state) {
     return null;
   }
 
@@ -175,13 +175,28 @@ export function parseOAuthState(cookieHeader: string | null, state: string | nul
       return null;
     }
 
-    if (cookie && cookie !== state) {
-      return parsed;
-    }
-
     return parsed;
   } catch {
     return null;
+  }
+}
+
+export function normalizeOAuthReturnTo(returnTo: string | null | undefined) {
+  if (!returnTo) {
+    return "/";
+  }
+
+  try {
+    const base = "https://trainer.local";
+    const url = new URL(returnTo, base);
+
+    if (url.origin !== base || !url.pathname.startsWith("/")) {
+      return "/";
+    }
+
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return "/";
   }
 }
 

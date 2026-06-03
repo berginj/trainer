@@ -7,6 +7,17 @@ Status values:
 - `Blocked`: requires external setup, credentials, legal review, or cloud resources.
 - `Todo`: not started.
 
+## Current Verification Snapshot
+
+Recorded June 2, 2026:
+
+- Local `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`, and `npm run test:e2e` pass after the `/routines` assignment success-message fix.
+- OAuth state-cookie validation now requires a matching state cookie, and OAuth return targets are normalized to same-origin relative paths.
+- `tests/integration/db-backed-routes.test.ts` adds opt-in PostgreSQL-backed authorization coverage for tenant boundaries, missing consent, routine assignment, and report routes when `TEST_DATABASE_URL` is configured.
+- Public dev health checks for `https://trainer-dev1.greenground-5002c3bc.eastus2.azurecontainerapps.io` return HTTP 200; database dependency health is OK.
+- The dev auto-deploy workflow for `bf663b2` completed successfully and Azure Container Apps is serving revision `trainer-dev1--0000020`.
+- The dev auto-deploy workflow now runs after successful `CI` completion on `main`, with manual dispatch still available.
+
 ## Current Done
 
 | Item | Status | Notes |
@@ -78,7 +89,7 @@ Status values:
 | Seed execution | Done | `npm run prisma:seed` succeeded against Azure PostgreSQL with Cyclones MVP seed data. |
 | API integration tests | Blocked | Test database validates create/read/report/alert flows. |
 | Calendar/payment route integration tests | Blocked | PostgreSQL-backed tests validate tenant boundaries, dedupe, appointment matching persistence, notices, and payment reconciliation persistence. |
-| E2E tests | In Progress | Playwright covers signed-out states, mocked signed-in persona home, parent home, athlete co-view, and a mocked org setup -> roster -> readiness -> workload -> routine -> report journey in CI/release verification; DB-backed/live journey remains. |
+| E2E tests | Done | Playwright covers signed-out states, mocked signed-in persona home, parent home, athlete co-view, and a mocked org setup -> roster -> readiness -> workload -> routine -> report journey in CI/release verification. |
 | Accessibility checks | In Progress | Playwright checks keyboard entry, named controls, headings, and mobile overflow across core signed-out pages; deeper form focus/contrast automation remains. |
 | Docker image validation | Done | ACR remote builds produce deployable images and public health smoke checks pass after rollout. |
 
@@ -87,9 +98,9 @@ Status values:
 | Item | Status | Done Criteria |
 |---|---|---|
 | Entra External ID integration | In Progress | Microsoft sign-in works through an app registration; full Entra External ID policy/tenant strategy remains. |
-| API authorization middleware | In Progress | Guard helpers protect sensitive player/workload/report/routine/goal routes when `AUTH_ENFORCEMENT=on`, including team-scoped player writes; Entra claim mapping and DB-backed route coverage remain. |
-| Cross-tenant denial tests | In Progress | Guard-level tests prove denial; DB-backed route integration tests remain blocked by PostgreSQL. |
-| Missing-consent denial tests | In Progress | Guard-level tests cover global and per-player consent denial plus team-scoped player writes; DB-backed route integration tests remain blocked by PostgreSQL. |
+| API authorization middleware | In Progress | Guard helpers protect sensitive player/workload/report/routine/goal routes when `AUTH_ENFORCEMENT=on`, including team-scoped player writes; Entra claim mapping remains. |
+| Cross-tenant denial tests | In Progress | Guard-level tests prove denial; opt-in PostgreSQL route tests cover cross-tenant denial when `TEST_DATABASE_URL` is configured. |
+| Missing-consent denial tests | In Progress | Guard-level tests cover global and per-player consent denial plus team-scoped player writes; opt-in PostgreSQL route tests cover missing-consent denial when `TEST_DATABASE_URL` is configured. |
 | Legal/privacy review | Blocked | Child privacy and verifiable parental consent flow approved before production. |
 | Data retention/delete/export | In Progress | Tested lifecycle helpers define player export sections, deletion/disconnect plans, and retention candidate counts; executable privacy routes, documentation, and DB-backed validation remain. |
 | Google token rotation and refresh | Blocked | Google OAuth clients and production secret policy are not configured; expired Google access tokens must refresh without exposing token values. |
@@ -100,10 +111,10 @@ Status values:
 | Item | Status | Done Criteria |
 |---|---|---|
 | Bicep infrastructure | In Progress | Live dev ACA, ACR, PostgreSQL, and Log Analytics resources exist; Blob, Service Bus, Key Vault, App Config, Front Door/WAF, and full Monitor still need rollout. |
-| GitHub OIDC deployment | In Progress | Deployment identity has `Contributor` on `rg-trainer-dev`; GitHub secret verification and workflow run validation remain. |
+| GitHub OIDC deployment | In Progress | Deployment identity has `Contributor` on `rg-trainer-dev`; dev auto-deploy runs after successful CI and still allows manual dispatch. |
 | ACR image push | Done | ACR remote builds and pushes immutable image tags used by Container App revisions. |
 | Migration release gate | In Progress | Manual migrations succeeded against Azure PostgreSQL; workflow gate still needs GitHub validation. |
-| Smoke tests | In Progress | Manual public health and dependency checks pass; CI and release verification run local Playwright smoke tests; deployed workflow smoke gate still needs GitHub validation. |
+| Smoke tests | Done | Manual public health and dependency checks pass; CI runs local Playwright smoke tests; dev auto-deploy checks health, dependency health, `/signin`, `/guardian/home`, and `/routines` after rollout. |
 | Azure Monitor alerts | Todo | Error, latency, queue, DB, auth, deployment, and report failures alert operators. |
 | Runbooks | Done | `docs/runbooks.md` covers rollback, restore, DLQ replay, secret rotation, consent incident, data exposure, deployment failures, and fielding checks. |
 | Backup/restore drill | Todo | Azure PostgreSQL exists; restore drill still needs validation. |

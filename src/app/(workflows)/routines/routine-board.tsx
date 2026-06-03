@@ -214,8 +214,8 @@ export function RoutineBoard() {
       return;
     }
 
-    setMessage("Routine assigned to the team.");
     await loadAssignments();
+    setMessage("Routine assigned to the team.");
   }
 
   return (
