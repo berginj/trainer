@@ -89,7 +89,7 @@ As of June 3, 2026:
 - `trainer-dev1` is running in Azure Container Apps and public `/api/health` and `/api/health/dependencies` return HTTP 200.
 - Database dependency health is OK. Storage, queue, App Configuration, and monitoring checks report configured after the Bicep infrastructure rollout adds their environment settings.
 - Local Playwright now passes after preserving the `/routines` assignment success message through refresh.
-- The dev auto-deploy workflow for `33ec537` completed successfully and Azure Container Apps is serving revision `trainer-dev1--0000022` with image tag `33ec53771dc867efce27fcd9866aaec726ddc568`.
+- The dev auto-deploy workflow for `083d5f4` completed successfully and Azure Container Apps is serving revision `trainer-dev1--0000023` with image tag `083d5f458906c79c19f769e6c3a3b1a0eed02648`.
 - Future pushes to `main` deploy only after CI succeeds; deployed smoke checks cover `/api/health`, `/api/health/dependencies`, `/signin`, `/guardian/home`, and `/routines`.
 
 ## Operations
