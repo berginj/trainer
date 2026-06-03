@@ -1,6 +1,6 @@
 import "dotenv/config";
-import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient, type MetricDomain, type Sport } from "@prisma/client";
+import { createPrismaPgAdapter } from "../src/lib/prisma-pg";
 import { parseSeedMetricDefinitions, seedRoutineCodes } from "../src/lib/seed-data";
 
 const connectionString = process.env.DATABASE_URL;
@@ -10,7 +10,7 @@ if (!connectionString) {
 }
 
 const prisma = new PrismaClient({
-  adapter: new PrismaPg({ connectionString })
+  adapter: createPrismaPgAdapter(connectionString)
 });
 
 const captureDifficultyByDomain = {

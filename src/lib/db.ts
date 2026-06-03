@@ -1,5 +1,5 @@
-import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
+import { createPrismaPgAdapter } from "./prisma-pg";
 
 const globalForPrisma = globalThis as unknown as {
   prisma?: PrismaClient;
@@ -13,7 +13,7 @@ function createPrismaClient() {
   }
 
   return new PrismaClient({
-    adapter: new PrismaPg({ connectionString })
+    adapter: createPrismaPgAdapter(connectionString)
   });
 }
 

@@ -91,14 +91,14 @@ jobs:
       - name: Azure login
         uses: azure/login@v2
         with:
-          client-id: ${{ vars.AZURE_CLIENT_ID }}
-          tenant-id: ${{ vars.AZURE_TENANT_ID }}
-          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ vars.AZURE_CLIENT_ID || secrets.TRAINERDEV1_AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID || secrets.TRAINERDEV1_AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID || secrets.TRAINERDEV1_AZURE_SUBSCRIPTION_ID }}
 
       - name: ACR login
         run: az acr login --name "$ACR_NAME"
         env:
-          ACR_NAME: ${{ vars.ACR_NAME }}
+          ACR_NAME: ${{ vars.ACR_NAME || 'trainerdevacr' }}
 
       - name: Build and push image
         id: image
@@ -110,8 +110,8 @@ jobs:
           docker push "$IMAGE"
           echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
         env:
-          ACR_LOGIN_SERVER: ${{ vars.ACR_LOGIN_SERVER }}
-          CONTAINER_APP_NAME: ${{ vars.CONTAINER_APP_NAME }}
+          ACR_LOGIN_SERVER: ${{ vars.ACR_LOGIN_SERVER || 'trainerdevacr.azurecr.io' }}
+          CONTAINER_APP_NAME: ${{ vars.CONTAINER_APP_NAME || 'trainer-dev1' }}
           IMAGE_TAG: ${{ env.IMAGE_TAG }}
 
   deploy-infra:
@@ -127,9 +127,27 @@ jobs:
       - name: Azure login
         uses: azure/login@v2
         with:
-          client-id: ${{ vars.AZURE_CLIENT_ID }}
-          tenant-id: ${{ vars.AZURE_TENANT_ID }}
-          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ vars.AZURE_CLIENT_ID || secrets.TRAINERDEV1_AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID || secrets.TRAINERDEV1_AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID || secrets.TRAINERDEV1_AZURE_SUBSCRIPTION_ID }}
+
+      - name: Resolve current Container App image
+        shell: bash
+        run: |
+          set -euo pipefail
+          image="$(az containerapp show \
+            --name "$CONTAINER_APP_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --query "properties.template.containers[0].image" \
+            --output tsv)"
+          if [ -z "$image" ]; then
+            echo "Current Container App image could not be resolved."
+            exit 1
+          fi
+          echo "CURRENT_CONTAINER_IMAGE=$image" >> "$GITHUB_ENV"
+        env:
+          CONTAINER_APP_NAME: ${{ vars.CONTAINER_APP_NAME || 'trainer-dev1' }}
+          RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP || 'rg-trainer-dev' }}
 
       - name: Bicep what-if
         shell: bash
@@ -142,6 +160,11 @@ jobs:
               "environmentName=${ENVIRONMENT_NAME}" \
               "appName=${CONTAINER_APP_NAME}" \
               "acrName=${ACR_NAME}" \
+              "containerImage=${CURRENT_CONTAINER_IMAGE}" \
+              "containerAppEnvironmentId=${CONTAINER_APP_ENVIRONMENT_ID}" \
+              "postgresServerName=${POSTGRES_SERVER_NAME}" \
+              "postgresLocation=${POSTGRES_LOCATION}" \
+              "enableRoleAssignments=${ENABLE_ROLE_ASSIGNMENTS}" \
               "postgresAdminPassword=${POSTGRES_ADMIN_PASSWORD}" \
               "authSecret=${AUTH_SECRET}" \
               "tokenEncryptionKey=${TOKEN_ENCRYPTION_KEY}" \
@@ -151,10 +174,14 @@ jobs:
               "microsoftAuthClientSecret=${MICROSOFT_AUTH_CLIENT_SECRET}" \
               "alertEmailAddress=${ALERT_EMAIL_ADDRESS}"
         env:
-          RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+          RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP || 'rg-trainer-dev' }}
           ENVIRONMENT_NAME: ${{ inputs.environment }}
-          CONTAINER_APP_NAME: ${{ vars.CONTAINER_APP_NAME }}
-          ACR_NAME: ${{ vars.ACR_NAME }}
+          CONTAINER_APP_NAME: ${{ vars.CONTAINER_APP_NAME || 'trainer-dev1' }}
+          ACR_NAME: ${{ vars.ACR_NAME || 'trainerdevacr' }}
+          CONTAINER_APP_ENVIRONMENT_ID: ${{ vars.CONTAINER_APP_ENVIRONMENT_ID || '/subscriptions/b80cbfa1-0b2b-47ae-bd7f-5c896af0c092/resourceGroups/secretagent-rg/providers/Microsoft.App/managedEnvironments/secretagent-env' }}
+          POSTGRES_SERVER_NAME: ${{ vars.POSTGRES_SERVER_NAME || 'trainer-dev1-pg' }}
+          POSTGRES_LOCATION: ${{ vars.POSTGRES_LOCATION || 'centralus' }}
+          ENABLE_ROLE_ASSIGNMENTS: ${{ vars.ENABLE_ROLE_ASSIGNMENTS || 'false' }}
           POSTGRES_ADMIN_PASSWORD: ${{ secrets.POSTGRES_ADMIN_PASSWORD }}
           AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
           TOKEN_ENCRYPTION_KEY: ${{ secrets.TOKEN_ENCRYPTION_KEY }}
@@ -175,6 +202,11 @@ jobs:
               "environmentName=${ENVIRONMENT_NAME}" \
               "appName=${CONTAINER_APP_NAME}" \
               "acrName=${ACR_NAME}" \
+              "containerImage=${CURRENT_CONTAINER_IMAGE}" \
+              "containerAppEnvironmentId=${CONTAINER_APP_ENVIRONMENT_ID}" \
+              "postgresServerName=${POSTGRES_SERVER_NAME}" \
+              "postgresLocation=${POSTGRES_LOCATION}" \
+              "enableRoleAssignments=${ENABLE_ROLE_ASSIGNMENTS}" \
               "postgresAdminPassword=${POSTGRES_ADMIN_PASSWORD}" \
               "authSecret=${AUTH_SECRET}" \
               "tokenEncryptionKey=${TOKEN_ENCRYPTION_KEY}" \
@@ -184,10 +216,14 @@ jobs:
               "microsoftAuthClientSecret=${MICROSOFT_AUTH_CLIENT_SECRET}" \
               "alertEmailAddress=${ALERT_EMAIL_ADDRESS}"
         env:
-          RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+          RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP || 'rg-trainer-dev' }}
           ENVIRONMENT_NAME: ${{ inputs.environment }}
-          CONTAINER_APP_NAME: ${{ vars.CONTAINER_APP_NAME }}
-          ACR_NAME: ${{ vars.ACR_NAME }}
+          CONTAINER_APP_NAME: ${{ vars.CONTAINER_APP_NAME || 'trainer-dev1' }}
+          ACR_NAME: ${{ vars.ACR_NAME || 'trainerdevacr' }}
+          CONTAINER_APP_ENVIRONMENT_ID: ${{ vars.CONTAINER_APP_ENVIRONMENT_ID || '/subscriptions/b80cbfa1-0b2b-47ae-bd7f-5c896af0c092/resourceGroups/secretagent-rg/providers/Microsoft.App/managedEnvironments/secretagent-env' }}
+          POSTGRES_SERVER_NAME: ${{ vars.POSTGRES_SERVER_NAME || 'trainer-dev1-pg' }}
+          POSTGRES_LOCATION: ${{ vars.POSTGRES_LOCATION || 'centralus' }}
+          ENABLE_ROLE_ASSIGNMENTS: ${{ vars.ENABLE_ROLE_ASSIGNMENTS || 'false' }}
           POSTGRES_ADMIN_PASSWORD: ${{ secrets.POSTGRES_ADMIN_PASSWORD }}
           AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
           TOKEN_ENCRYPTION_KEY: ${{ secrets.TOKEN_ENCRYPTION_KEY }}
@@ -250,9 +286,9 @@ jobs:
       - name: Azure login
         uses: azure/login@v2
         with:
-          client-id: ${{ vars.AZURE_CLIENT_ID }}
-          tenant-id: ${{ vars.AZURE_TENANT_ID }}
-          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ vars.AZURE_CLIENT_ID || secrets.TRAINERDEV1_AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID || secrets.TRAINERDEV1_AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID || secrets.TRAINERDEV1_AZURE_SUBSCRIPTION_ID }}
 
       - name: Update Container App image
         shell: bash
@@ -263,8 +299,8 @@ jobs:
             --resource-group "$RESOURCE_GROUP" \
             --image "$CONTAINER_IMAGE"
         env:
-          CONTAINER_APP_NAME: ${{ vars.CONTAINER_APP_NAME }}
-          RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+          CONTAINER_APP_NAME: ${{ vars.CONTAINER_APP_NAME || 'trainer-dev1' }}
+          RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP || 'rg-trainer-dev' }}
           CONTAINER_IMAGE: ${{ needs.build-image.outputs.image }}
 
   smoke-test:
@@ -280,7 +316,7 @@ jobs:
           set -euo pipefail
           curl --fail --show-error --silent "${APP_BASE_URL}/api/health"
         env:
-          APP_BASE_URL: ${{ vars.APP_BASE_URL }}
+          APP_BASE_URL: ${{ vars.APP_BASE_URL || 'https://trainer-dev1.greenground-5002c3bc.eastus2.azurecontainerapps.io' }}
 
       - name: Check dependency health endpoint
         shell: bash
@@ -288,4 +324,4 @@ jobs:
           set -euo pipefail
           curl --fail --show-error --silent "${APP_BASE_URL}/api/health/dependencies"
         env:
-          APP_BASE_URL: ${{ vars.APP_BASE_URL }}
+          APP_BASE_URL: ${{ vars.APP_BASE_URL || 'https://trainer-dev1.greenground-5002c3bc.eastus2.azurecontainerapps.io' }}

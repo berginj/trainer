@@ -12,8 +12,14 @@ param environmentName string = 'dev'
 @description('Azure region.')
 param location string = resourceGroup().location
 
+@description('Azure region for PostgreSQL. Use this to target an existing server in a different region.')
+param postgresLocation string = location
+
 @description('Container image used for first infrastructure creation.')
 param containerImage string = 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
+
+@description('Existing Container Apps managed environment resource ID. Leave blank to create one in this resource group.')
+param containerAppEnvironmentId string = ''
 
 @description('PostgreSQL administrator login.')
 param postgresAdminLogin string = 'traineradmin'
@@ -47,7 +53,9 @@ param microsoftAuthClientSecret string = ''
 param appName string = 'trainer-${environmentName}'
 param acrName string = toLower(replace('trainer${environmentName}${uniqueString(resourceGroup().id, environmentName)}', '-', ''))
 param databaseName string = 'trainer'
+param postgresServerName string = toLower('trainer-${environmentName}-${uniqueString(resourceGroup().id, environmentName)}')
 param alertEmailAddress string = ''
+param enableRoleAssignments bool = true
 param tags object = {
   app: 'trainer'
   environment: environmentName
@@ -55,24 +63,22 @@ param tags object = {
 }
 
 var uniqueSuffix = uniqueString(resourceGroup().id, environmentName)
-var postgresName = toLower('trainer-${environmentName}-${uniqueSuffix}')
 var logAnalyticsName = 'log-trainer-${environmentName}-${uniqueSuffix}'
 var appInsightsName = 'appi-trainer-${environmentName}-${uniqueSuffix}'
-var managedIdentityName = 'id-trainer-${environmentName}-${uniqueSuffix}'
 var containerAppEnvName = 'cae-trainer-${environmentName}-${uniqueSuffix}'
 var keyVaultName = toLower('kv-trainer-${environmentName}-${substring(uniqueSuffix, 0, 8)}')
 var storageAccountName = toLower('sttrainer${environmentName}${substring(uniqueSuffix, 0, 8)}')
 var serviceBusNamespaceName = toLower('sb-trainer-${environmentName}-${uniqueSuffix}')
 var serviceBusQueueName = 'trainer-jobs'
 var appConfigName = toLower('appcs-trainer-${environmentName}-${uniqueSuffix}')
-var frontDoorProfileName = toLower('afd-trainer-${environmentName}-${uniqueSuffix}')
-var frontDoorEndpointName = toLower('trainer-${environmentName}-${substring(uniqueSuffix, 0, 8)}')
+var frontDoorProfileName = toLower('afdp-trainer-${environmentName}-${uniqueSuffix}')
+var frontDoorEndpointName = toLower('trainerp-${environmentName}-${substring(uniqueSuffix, 0, 8)}')
 var frontDoorOriginGroupName = 'container-app-origin-group'
 var frontDoorOriginName = 'container-app-origin'
 var frontDoorRouteName = 'default-route'
-var frontDoorWafName = toLower('waf-trainer-${environmentName}-${uniqueSuffix}')
 var monitorActionGroupName = 'ag-trainer-${environmentName}'
-var databaseUrl = 'postgresql://${postgresAdminLogin}:${postgresAdminPassword}@${postgres.name}.postgres.database.azure.com:5432/${databaseName}?schema=public&sslmode=require'
+var databaseUrl = 'postgresql://${postgresAdminLogin}:${postgresAdminPassword}@${postgresServerName}.postgres.database.azure.com:5432/${databaseName}?sslmode=require'
+var googleAuthClientSecretValue = empty(googleAuthClientSecret) ? 'not-configured' : googleAuthClientSecret
 var acrPullRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')
 var storageBlobDataContributorRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe')
 var serviceBusDataOwnerRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '090c5cfd-751d-490a-894a-3ce6f1109419')
@@ -114,25 +120,9 @@ resource acr 'Microsoft.ContainerRegistry/registries@2023-07-01' = {
   }
 }
 
-resource identity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
-  name: managedIdentityName
-  location: location
-  tags: tags
-}
-
-resource acrPull 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(acr.id, identity.id, 'acr-pull')
-  scope: acr
-  properties: {
-    principalId: identity.properties.principalId
-    principalType: 'ServicePrincipal'
-    roleDefinitionId: acrPullRoleId
-  }
-}
-
 resource postgres 'Microsoft.DBforPostgreSQL/flexibleServers@2023-06-01-preview' = {
-  name: postgresName
-  location: location
+  name: postgresServerName
+  location: postgresLocation
   tags: tags
   sku: {
     name: 'Standard_B1ms'
@@ -276,37 +266,37 @@ resource appConfig 'Microsoft.AppConfiguration/configurationStores@2023-03-01' =
   }
 }
 
-resource storageBlobAccess 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(storageAccount.id, identity.id, 'storage-blob-data-contributor')
+resource storageBlobAccess 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (enableRoleAssignments) {
+  name: guid(storageAccount.id, containerApp.id, 'storage-blob-data-contributor')
   scope: storageAccount
   properties: {
-    principalId: identity.properties.principalId
+    principalId: containerApp.identity.principalId
     principalType: 'ServicePrincipal'
     roleDefinitionId: storageBlobDataContributorRoleId
   }
 }
 
-resource serviceBusAccess 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(serviceBusNamespace.id, identity.id, 'service-bus-data-owner')
+resource serviceBusAccess 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (enableRoleAssignments) {
+  name: guid(serviceBusNamespace.id, containerApp.id, 'service-bus-data-owner')
   scope: serviceBusNamespace
   properties: {
-    principalId: identity.properties.principalId
+    principalId: containerApp.identity.principalId
     principalType: 'ServicePrincipal'
     roleDefinitionId: serviceBusDataOwnerRoleId
   }
 }
 
-resource appConfigAccess 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(appConfig.id, identity.id, 'app-configuration-data-reader')
+resource appConfigAccess 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (enableRoleAssignments) {
+  name: guid(appConfig.id, containerApp.id, 'app-configuration-data-reader')
   scope: appConfig
   properties: {
-    principalId: identity.properties.principalId
+    principalId: containerApp.identity.principalId
     principalType: 'ServicePrincipal'
     roleDefinitionId: appConfigurationDataReaderRoleId
   }
 }
 
-resource containerEnvironment 'Microsoft.App/managedEnvironments@2024-03-01' = {
+resource containerEnvironment 'Microsoft.App/managedEnvironments@2024-03-01' = if (empty(containerAppEnvironmentId)) {
   name: containerAppEnvName
   location: location
   tags: tags
@@ -326,13 +316,10 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
   location: location
   tags: tags
   identity: {
-    type: 'UserAssigned'
-    userAssignedIdentities: {
-      '${identity.id}': {}
-    }
+    type: 'SystemAssigned'
   }
   properties: {
-    managedEnvironmentId: containerEnvironment.id
+    managedEnvironmentId: empty(containerAppEnvironmentId) ? containerEnvironment.id : containerAppEnvironmentId
     configuration: {
       activeRevisionsMode: 'Single'
       ingress: {
@@ -343,7 +330,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
       registries: [
         {
           server: acr.properties.loginServer
-          identity: identity.id
+          identity: 'system'
         }
       ]
       secrets: [
@@ -362,7 +349,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
         }
         {
           name: 'google-auth-client-secret'
-          value: googleAuthClientSecret
+          value: googleAuthClientSecretValue
         }
         {
           name: 'microsoft-auth-client-secret'
@@ -454,13 +441,19 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
     }
   }
   dependsOn: [
-    acrPull
     postgresDatabase
     allowAzureServices
-    storageBlobAccess
-    serviceBusAccess
-    appConfigAccess
   ]
+}
+
+resource acrPull 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (enableRoleAssignments) {
+  name: guid(acr.id, containerApp.id, 'acr-pull')
+  scope: acr
+  properties: {
+    principalId: containerApp.identity.principalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: acrPullRoleId
+  }
 }
 
 resource frontDoorProfile 'Microsoft.Cdn/profiles@2024-02-01' = {
@@ -468,7 +461,7 @@ resource frontDoorProfile 'Microsoft.Cdn/profiles@2024-02-01' = {
   location: 'global'
   tags: tags
   sku: {
-    name: 'Standard_AzureFrontDoor'
+    name: 'Premium_AzureFrontDoor'
   }
   properties: {
   }
@@ -535,63 +528,8 @@ resource frontDoorRoute 'Microsoft.Cdn/profiles/afdEndpoints/routes@2024-02-01' 
     httpsRedirect: 'Enabled'
     enabledState: 'Enabled'
   }
-}
-
-resource frontDoorWaf 'Microsoft.Network/frontDoorWebApplicationFirewallPolicies@2024-02-01' = {
-  name: frontDoorWafName
-  location: 'global'
-  tags: tags
-  sku: {
-    name: 'Standard_AzureFrontDoor'
-  }
-  properties: {
-    policySettings: {
-      enabledState: 'Enabled'
-      mode: 'Prevention'
-      requestBodyCheck: 'Enabled'
-    }
-    managedRules: {
-      managedRuleSets: [
-        {
-          ruleSetType: 'Microsoft_DefaultRuleSet'
-          ruleSetVersion: '2.1'
-          ruleSetAction: 'Block'
-        }
-        {
-          ruleSetType: 'Microsoft_BotManagerRuleSet'
-          ruleSetVersion: '1.0'
-          ruleSetAction: 'Block'
-        }
-      ]
-    }
-  }
-}
-
-resource frontDoorSecurityPolicy 'Microsoft.Cdn/profiles/securityPolicies@2024-02-01' = {
-  parent: frontDoorProfile
-  name: 'waf-policy'
-  properties: {
-    parameters: {
-      type: 'WebApplicationFirewall'
-      wafPolicy: {
-        id: frontDoorWaf.id
-      }
-      associations: [
-        {
-          domains: [
-            {
-              id: frontDoorEndpoint.id
-            }
-          ]
-          patternsToMatch: [
-            '/*'
-          ]
-        }
-      ]
-    }
-  }
   dependsOn: [
-    frontDoorRoute
+    frontDoorOrigin
   ]
 }
 
