@@ -1,10 +1,17 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { requirePlayerDataEntryAccess, requireTeamEntryAccess } from "@/lib/auth-guards";
+import { requirePlayerDataEntryAccess } from "@/lib/auth-guards";
 import { writeAuditEvent } from "@/lib/audit";
 import { getPrisma } from "@/lib/db";
 import { getRequestActorId } from "@/lib/request-auth";
 import { parseJsonWithSchema } from "@/lib/route-utils";
-import { buildBaseballPitchCountAlert, buildSoftballExposureAlert, getAgeOnDate } from "@/lib/safety-rules";
+import {
+  buildBaseballPitchCountAlert,
+  buildBaseballRestConflictAlert,
+  buildSoftballExposureAlert,
+  getAgeOnDate,
+  isParticipationMarkedAvailable,
+  resolveBaseballRestDays
+} from "@/lib/safety-rules";
 import { workloadEntryCreateSchema } from "@/lib/validation";
 
 export const runtime = "nodejs";
@@ -16,16 +23,12 @@ export async function POST(request: NextRequest) {
     return parsed.response;
   }
 
-  const authResponse = parsed.data.teamId
-    ? requireTeamEntryAccess(request.headers, {
-        organizationId: parsed.data.organizationId,
-        teamId: parsed.data.teamId
-      })
-    : requirePlayerDataEntryAccess(request.headers, {
-        organizationId: parsed.data.organizationId,
-        playerId: parsed.data.playerId,
-        requiresConsent: true
-      });
+  const authResponse = requirePlayerDataEntryAccess(request.headers, {
+    organizationId: parsed.data.organizationId,
+    playerId: parsed.data.playerId,
+    teamId: parsed.data.teamId,
+    requiresConsent: true
+  });
 
   if (authResponse) {
     return authResponse;
@@ -52,18 +55,61 @@ export async function POST(request: NextRequest) {
     }
   });
 
-  if (parsed.data.sport === "baseball" && parsed.data.pitches && parsed.data.pitches > 0) {
+  if (parsed.data.sport === "baseball") {
     const player = await prisma.player.findUnique({
       where: { id: parsed.data.playerId }
     });
-    const alert = player
-      ? buildBaseballPitchCountAlert({
-          age: getAgeOnDate(player.dateOfBirth, parsed.data.date),
-          pitches: parsed.data.pitches
-        })
-      : null;
 
-    if (alert) {
+    if (player && parsed.data.pitches && parsed.data.pitches > 0) {
+      const alert = buildBaseballPitchCountAlert({
+        age: getAgeOnDate(player.dateOfBirth, parsed.data.date),
+        pitches: parsed.data.pitches
+      });
+
+      if (alert) {
+        await prisma.alert.create({
+          data: {
+            organizationId: parsed.data.organizationId,
+            playerId: parsed.data.playerId,
+            severity: alert.severity,
+            ruleCode: alert.ruleCode,
+            sourceType: "workload_entry",
+            sourceId: workloadEntry.id,
+            reason: alert.reason,
+            nextAction: alert.nextAction
+          }
+        });
+      }
+    }
+
+    if (player && isParticipationMarkedAvailable(parsed.data.participationStatus)) {
+      const previousPitchingOuting = await prisma.workloadEntry.findFirst({
+        where: {
+          organizationId: parsed.data.organizationId,
+          playerId: parsed.data.playerId,
+          sport: "baseball",
+          date: { lt: parsed.data.date },
+          pitches: { gt: 0 }
+        },
+        orderBy: { date: "desc" }
+      });
+      const previousPitchCount = previousPitchingOuting?.pitches ?? 0;
+      const rest = previousPitchingOuting
+        ? resolveBaseballRestDays(getAgeOnDate(player.dateOfBirth, previousPitchingOuting.date), previousPitchCount)
+        : null;
+      const daysSinceLastOuting = previousPitchingOuting
+        ? Math.floor((parsed.data.date.getTime() - previousPitchingOuting.date.getTime()) / (1000 * 60 * 60 * 24))
+        : Number.POSITIVE_INFINITY;
+      const alert =
+        rest && rest.requiredRestDays > 0
+          ? buildBaseballRestConflictAlert({
+              requiredRestDays: rest.requiredRestDays,
+              daysSinceLastOuting,
+              markedAvailable: true
+            })
+          : null;
+
+      if (alert) {
       await prisma.alert.create({
         data: {
           organizationId: parsed.data.organizationId,
@@ -76,6 +122,7 @@ export async function POST(request: NextRequest) {
           nextAction: alert.nextAction
         }
       });
+    }
     }
   }
 

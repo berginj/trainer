@@ -214,6 +214,18 @@ enum PlayerStatLineReviewStatus {
   ignored
 }
 
+enum AuthProvider {
+  google
+  microsoft
+}
+
+enum InvitationStatus {
+  pending
+  accepted
+  revoked
+  expired
+}
+
 model Organization {
   id           String   @id @default(cuid())
   name         String
@@ -237,6 +249,7 @@ model Organization {
   externalSportsSources ExternalSportsSource[]
   externalTeamIdentities ExternalTeamIdentity[]
   goals                Goal[]
+  invitations          Invitation[]
   measurements         Measurement[]
   memberships          OrganizationMembership[]
   playerGameStatLines  PlayerGameStatLine[]
@@ -273,6 +286,10 @@ model UserProfile {
   appointmentChangeNotices AppointmentChangeNotice[] @relation("AppointmentChangeActor")
   assignedRoutines         RoutineAssignment[]  @relation("RoutineAssignedBy")
   auditEvents              AuditEvent[]         @relation("AuditActor")
+  authIdentities           AuthIdentity[]
+  claimedInvitations       Invitation[]         @relation("InvitationAcceptedBy")
+  completedRoutines        RoutineCompletion[]  @relation("RoutineCompletedBy")
+  createdInvitations       Invitation[]         @relation("InvitationCreatedBy")
   confirmedAppointmentMatches AppointmentAthleteMatch[] @relation("AppointmentMatchConfirmedBy")
   confirmedPaymentMatches PaymentAthleteMatch[] @relation("PaymentMatchConfirmedBy")
   consentRecords           ConsentRecord[]      @relation("ConsentGuardian")
@@ -328,6 +345,11 @@ model Team {
   sport          Sport
   sexCategory    String?
   level          String
+  brandDisplayName     String?
+  brandPrimaryColor    String   @default("#7a1020")
+  brandSecondaryColor  String   @default("#f4c542")
+  brandAccentColor     String   @default("#ffffff")
+  brandLogoUrl         String?
   activeStatus   ActiveStatus @default(active)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -335,6 +357,7 @@ model Team {
   externalGames       ExternalGame[]
   externalPlayerIdentities ExternalPlayerIdentity[]
   externalTeamIdentities ExternalTeamIdentity[]
+  invitations        Invitation[]
   organization       Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   playerGameStatLines PlayerGameStatLine[]
   playerSeasonStatSnapshots PlayerSeasonStatSnapshot[]
@@ -347,6 +370,49 @@ model Team {
   workloadEntries    WorkloadEntry[]
 
   @@index([organizationId, seasonId])
+}
+
+model AuthIdentity {
+  id              String       @id @default(cuid())
+  userId          String
+  provider        AuthProvider
+  providerSubject String
+  email           String
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  user UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerSubject])
+  @@index([email])
+}
+
+model Invitation {
+  id             String           @id @default(cuid())
+  organizationId String
+  teamId         String?
+  playerId       String?
+  email          String
+  role           OrganizationRole
+  relationship   String?
+  tokenHash      String           @unique
+  status         InvitationStatus @default(pending)
+  expiresAt      DateTime?
+  createdById    String?
+  acceptedById   String?
+  acceptedAt     DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  acceptedBy   UserProfile?  @relation("InvitationAcceptedBy", fields: [acceptedById], references: [id], onDelete: SetNull)
+  createdBy    UserProfile?  @relation("InvitationCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  player       Player?       @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  team         Team?         @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, email, status])
+  @@index([teamId, role, status])
+  @@index([playerId, role, status])
 }
 
 model TeamMembership {
@@ -388,6 +454,7 @@ model Player {
   externalPlayerIdentities ExternalPlayerIdentity[]
   goals              Goal[]
   guardianLinks      GuardianPlayerLink[]
+  invitations        Invitation[]
   measurements       Measurement[]
   organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   playerGameStatLines PlayerGameStatLine[]
@@ -1040,6 +1107,7 @@ model RoutineCompletion {
   organizationId String
   assignmentId   String
   playerId       String
+  completedByUserId String?
   date           DateTime
   completed      Boolean
   quality        String?
@@ -1050,10 +1118,12 @@ model RoutineCompletion {
   updatedAt      DateTime @updatedAt
 
   assignment   RoutineAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  completedBy  UserProfile?      @relation("RoutineCompletedBy", fields: [completedByUserId], references: [id], onDelete: SetNull)
   organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   player       Player            @relation(fields: [playerId], references: [id], onDelete: Cascade)
 
   @@index([organizationId, playerId, date])
+  @@unique([assignmentId, playerId, date])
 }
 
 model Alert {

@@ -108,6 +108,65 @@ async function main() {
       });
     }
   }
+
+  if (process.env.SEED_CYCLONES_MVP === "on") {
+    const organization =
+      (await prisma.organization.findFirst({ where: { name: "Cyclones Basketball" } })) ??
+      (await prisma.organization.create({
+        data: {
+          name: "Cyclones Basketball",
+          timezone: "America/New_York"
+        }
+      }));
+    const season =
+      (await prisma.season.findFirst({
+        where: {
+          organizationId: organization.id,
+          name: "Cyclones MVP Season"
+        }
+      })) ??
+      (await prisma.season.create({
+        data: {
+          organizationId: organization.id,
+          name: "Cyclones MVP Season",
+          startDate: new Date("2026-06-01T00:00:00.000Z"),
+          endDate: new Date("2026-08-31T00:00:00.000Z")
+        }
+      }));
+    const existingTeam = await prisma.team.findFirst({
+      where: {
+        organizationId: organization.id,
+        seasonId: season.id,
+        name: "Cyclones"
+      }
+    });
+
+    if (existingTeam) {
+      await prisma.team.update({
+        where: { id: existingTeam.id },
+        data: {
+          brandDisplayName: "Cyclones Basketball",
+          brandPrimaryColor: "#7a1020",
+          brandSecondaryColor: "#f4c542",
+          brandAccentColor: "#ffffff"
+        }
+      });
+    } else {
+      await prisma.team.create({
+        data: {
+          organizationId: organization.id,
+          seasonId: season.id,
+          name: "Cyclones",
+          sport: "basketball",
+          level: "youth",
+          brandDisplayName: "Cyclones Basketball",
+          brandPrimaryColor: "#7a1020",
+          brandSecondaryColor: "#f4c542",
+          brandAccentColor: "#ffffff"
+        }
+      });
+    }
+  }
 }
 
 main()

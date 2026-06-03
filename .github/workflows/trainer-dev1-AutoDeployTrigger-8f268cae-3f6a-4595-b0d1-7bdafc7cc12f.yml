@@ -1,49 +1,62 @@
 name: Trigger auto deployment for trainer-dev1
 
-# When this action will be executed
 on:
-  # Automatically trigger it when detected changes in repo
   push:
-    branches: 
-      [ main ]
+    branches:
+      - main
     paths:
-    - '**'
-    - '.github/workflows/trainer-dev1-AutoDeployTrigger-8f268cae-3f6a-4595-b0d1-7bdafc7cc12f.yml'
+      - "**"
+      - ".github/workflows/trainer-dev1-AutoDeployTrigger-8f268cae-3f6a-4595-b0d1-7bdafc7cc12f.yml"
+  workflow_dispatch:
 
-  # Allow manual trigger 
-  workflow_dispatch:      
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  ACR_NAME: trainerdevacr
+  ACR_LOGIN_SERVER: trainerdevacr.azurecr.io
+  CONTAINER_APP_NAME: trainer-dev1
+  RESOURCE_GROUP: rg-trainer-dev
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    permissions: 
-      id-token: write #This is required for requesting the OIDC JWT Token
-      contents: read #Required when GH token is used to authenticate with private repo
 
     steps:
-      - name: Checkout to the branch
-        uses: actions/checkout@v2
+      - name: Checkout
+        uses: actions/checkout@v5
 
-      - name: Azure Login
+      - name: Azure login
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.TRAINERDEV1_AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.TRAINERDEV1_AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.TRAINERDEV1_AZURE_SUBSCRIPTION_ID }}
 
-      - name: Build and push container image to registry
-        uses: azure/container-apps-deploy-action@v2
-        with:
-          appSourcePath: ${{ github.workspace }}
-          _dockerfilePathKey_: _dockerfilePath_
-          _targetLabelKey_: _targetLabel_
-          registryUrl: 
-          registryUsername: ${{ secrets.TRAINERDEV1_REGISTRY_USERNAME }}
-          registryPassword: ${{ secrets.TRAINERDEV1_REGISTRY_PASSWORD }}
-          containerAppName: trainer-dev1
-          resourceGroup: rg-trainer-dev
-          imageToBuild: default/[parameters('containerAppName')]:${{ github.sha }}
-          _buildArgumentsKey_: |
-            _buildArgumentsValues_
+      - name: Build image in Azure Container Registry
+        run: |
+          az acr build \
+            --registry "$ACR_NAME" \
+            --image "$CONTAINER_APP_NAME:${GITHUB_SHA}" \
+            --file Dockerfile \
+            .
 
-
+      - name: Deploy Container App revision
+        run: |
+          az containerapp update \
+            --name "$CONTAINER_APP_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --image "$ACR_LOGIN_SERVER/$CONTAINER_APP_NAME:${GITHUB_SHA}" \
+            --set-env-vars \
+              NODE_ENV=production \
+              AUTH_ENFORCEMENT=off \
+              DATABASE_URL=secretref:database-url \
+              AUTH_SECRET=secretref:auth-secret \
+              TOKEN_ENCRYPTION_KEY=secretref:token-encryption-key \
+              TOKEN_ENCRYPTION_KEY_VERSION=v1 \
+              MICROSOFT_AUTH_CLIENT_ID=ccdda902-1f14-4bb8-a651-64ceb12e9f1d \
+              MICROSOFT_AUTH_CLIENT_SECRET=secretref:microsoft-auth-client-secret \
+              SEED_CYCLONES_MVP=off \
+            --min-replicas 1 \
+            --max-replicas 1

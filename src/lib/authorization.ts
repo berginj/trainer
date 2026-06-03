@@ -7,6 +7,7 @@ type AccessContext = {
   assignedTeamIds?: string[];
   linkedPlayerIds?: string[];
   consentGranted?: boolean;
+  consentGrantedPlayerIds?: string[];
 };
 
 type ResourceContext = {
@@ -21,6 +22,18 @@ const organizationAdminRoles = new Set<Role>(["org_admin"]);
 const teamRoles = new Set<Role>(["team_coach", "assistant_coach", "evaluator"]);
 const guardianPlayerRoles = new Set<Role>(["guardian", "player"]);
 
+function hasPlayerConsent(user: AccessContext, resource: ResourceContext): boolean {
+  if (!resource.requiresConsent) {
+    return true;
+  }
+
+  if (resource.playerId && user.consentGrantedPlayerIds?.length) {
+    return user.consentGrantedPlayerIds.includes(resource.playerId);
+  }
+
+  return Boolean(user.consentGranted);
+}
+
 export function hasTenantAccess(user: AccessContext, resource: ResourceContext): boolean {
   if (user.roles.some((role) => platformRoles.has(role))) {
     return true;
@@ -34,7 +47,7 @@ export function canReadPlayer(user: AccessContext, resource: ResourceContext): b
     return false;
   }
 
-  if (resource.requiresConsent && !user.consentGranted) {
+  if (!hasPlayerConsent(user, resource)) {
     return false;
   }
 
@@ -131,7 +144,7 @@ export function canEnterPlayerData(
     return false;
   }
 
-  if (resource.requiresConsent && !user.consentGranted) {
+  if (!hasPlayerConsent(user, resource)) {
     return false;
   }
 

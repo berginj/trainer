@@ -76,6 +76,28 @@ describe("auth guards", () => {
     ).toBeNull();
   });
 
+  it("blocks access to a linked player without that player's consent", () => {
+    process.env.AUTH_ENFORCEMENT = "on";
+
+    const response = requirePlayerAccess(
+      new Headers({
+        "x-user-id": "guardian_1",
+        "x-roles": "guardian",
+        "x-org-ids": "org_1",
+        "x-player-ids": "player_1,player_2",
+        "x-consent-granted": "true",
+        "x-consented-player-ids": "player_1"
+      }),
+      {
+        organizationId: "org_1",
+        playerId: "player_2",
+        requiresConsent: true
+      }
+    );
+
+    expect(response?.status).toBe(403);
+  });
+
   it("requires platform admin for platform-only actions", () => {
     process.env.AUTH_ENFORCEMENT = "on";
 
@@ -138,6 +160,28 @@ describe("auth guards", () => {
       }),
       {
         organizationId: "org_1",
+        playerId: "player_1",
+        requiresConsent: true
+      }
+    );
+
+    expect(response?.status).toBe(403);
+  });
+
+  it("blocks team-scoped player data entry when consent is missing", () => {
+    process.env.AUTH_ENFORCEMENT = "on";
+
+    const response = requirePlayerDataEntryAccess(
+      new Headers({
+        "x-user-id": "coach_1",
+        "x-roles": "team_coach",
+        "x-org-ids": "org_1",
+        "x-team-ids": "team_1",
+        "x-consent-granted": "false"
+      }),
+      {
+        organizationId: "org_1",
+        teamId: "team_1",
         playerId: "player_1",
         requiresConsent: true
       }

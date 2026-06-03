@@ -21,15 +21,20 @@ export default function TeamSetupPage() {
       title="Team setup"
     >
       <ApiForm
-        description="Creates a sport-specific team for one season."
+        description="Creates a sport-specific team for one season with editable team colors."
         endpoint="/api/teams"
         fields={[
           { name: "organizationId", label: "Organization ID", required: true },
           { name: "seasonId", label: "Season ID", required: true },
-          { name: "name", label: "Team name", required: true, placeholder: "12U Baseball" },
+          { name: "name", label: "Team name", required: true, placeholder: "Cyclones" },
           { name: "sport", label: "Sport", type: "select", required: true, options: ["basketball", "baseball", "softball"] },
           { name: "sexCategory", label: "Sex category", placeholder: "optional" },
-          { name: "level", label: "Level", required: true, placeholder: "12U" }
+          { name: "level", label: "Level", required: true, placeholder: "12U" },
+          { name: "brandDisplayName", label: "Brand display name", placeholder: "Cyclones Basketball" },
+          { name: "brandPrimaryColor", label: "Primary color", defaultValue: "#7a1020" },
+          { name: "brandSecondaryColor", label: "Secondary color", defaultValue: "#f4c542" },
+          { name: "brandAccentColor", label: "Accent color", defaultValue: "#ffffff" },
+          { name: "brandLogoUrl", label: "Logo URL", placeholder: "optional https://..." }
         ]}
         title="Create team"
       />

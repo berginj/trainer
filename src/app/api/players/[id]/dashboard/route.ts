@@ -27,6 +27,23 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
         orderBy: { createdAt: "desc" },
         take: 10
       },
+      goals: {
+        where: { status: "active" },
+        include: {
+          metricDefinition: {
+            select: {
+              displayName: true,
+              unit: true
+            }
+          }
+        },
+        orderBy: [{ dueDate: "asc" }, { createdAt: "desc" }],
+        take: 10
+      },
+      teamPlayers: {
+        where: { status: "active" },
+        include: { team: true }
+      },
       evaluations: {
         orderBy: { date: "desc" },
         take: 1
@@ -55,6 +72,15 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
         preferredName: player.preferredName,
         activeStatus: player.activeStatus
       },
+      teams: player.teamPlayers.map(({ team }) => ({
+        id: team.id,
+        name: team.name,
+        brandDisplayName: team.brandDisplayName,
+        brandPrimaryColor: team.brandPrimaryColor,
+        brandSecondaryColor: team.brandSecondaryColor,
+        brandAccentColor: team.brandAccentColor,
+        brandLogoUrl: team.brandLogoUrl
+      })),
       latestReadiness: player.readinessChecks[0] ?? null,
       openAlerts: player.alerts.map((alert) => ({
         severity: alert.severity,
@@ -70,6 +96,14 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
           sport: assignment.routine.sport,
           durationMin: assignment.routine.durationMin
         }
+      })),
+      goals: player.goals.map((goal) => ({
+        id: goal.id,
+        targetType: goal.targetType,
+        targetValue: goal.targetValue,
+        dueDate: goal.dueDate,
+        status: goal.status,
+        metricDefinition: goal.metricDefinition
       })),
       upcomingEvaluationDate: player.evaluations[0]?.date ?? null
     })

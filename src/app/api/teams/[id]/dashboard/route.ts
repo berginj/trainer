@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import type { ConsentType } from "@prisma/client";
 import { requireTeamEntryAccess } from "@/lib/auth-guards";
 import { apiErrorResponse } from "@/lib/api-response";
 import { buildTeamDashboard } from "@/lib/dashboard";
@@ -9,12 +10,29 @@ export const runtime = "nodejs";
 export async function GET(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params;
   const prisma = getPrisma();
+  const requiredConsentTypes: ConsentType[] = ["readiness", "workload", "reports"];
   const team = await prisma.team.findUnique({
     where: { id },
     include: {
       teamPlayers: {
+        where: { status: "active" },
         include: {
-          player: true
+          player: {
+            include: {
+              guardianLinks: {
+                where: { status: "active" }
+              },
+              consents: {
+                where: { status: "granted" }
+              },
+              invitations: {
+                where: {
+                  role: "guardian",
+                  status: "pending"
+                }
+              }
+            }
+          }
         }
       }
     }
@@ -49,9 +67,23 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
       team: {
         id: team.id,
         name: team.name,
-        sport: team.sport
+        sport: team.sport,
+        brandDisplayName: team.brandDisplayName,
+        brandPrimaryColor: team.brandPrimaryColor,
+        brandSecondaryColor: team.brandSecondaryColor,
+        brandAccentColor: team.brandAccentColor,
+        brandLogoUrl: team.brandLogoUrl
       },
-      players: team.teamPlayers.map(({ player }) => ({ player })),
+      players: team.teamPlayers.map(({ player }) => {
+        const grantedConsentTypes = new Set(player.consents.map((consent) => consent.consentType));
+
+        return {
+          player,
+          guardianCount: player.guardianLinks.length,
+          pendingInviteCount: player.invitations.length,
+          consentGranted: requiredConsentTypes.every((consentType) => grantedConsentTypes.has(consentType))
+        };
+      }),
       openAlerts: openAlerts.map((alert) => ({
         playerId: alert.playerId,
         severity: alert.severity,

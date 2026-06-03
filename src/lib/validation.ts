@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { roleSchema } from "./contracts";
 
+export const hexColorSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Expected a 6-digit hex color.");
+
 export const organizationCreateSchema = z.object({
   name: z.string().min(1),
   timezone: z.string().min(1).default("America/New_York")
@@ -19,7 +21,20 @@ export const teamCreateSchema = z.object({
   name: z.string().min(1),
   sport: z.enum(["basketball", "baseball", "softball"]),
   sexCategory: z.string().min(1).optional(),
-  level: z.string().min(1)
+  level: z.string().min(1),
+  brandDisplayName: z.string().min(1).optional(),
+  brandPrimaryColor: hexColorSchema.default("#7a1020"),
+  brandSecondaryColor: hexColorSchema.default("#f4c542"),
+  brandAccentColor: hexColorSchema.default("#ffffff"),
+  brandLogoUrl: z.string().url().optional()
+});
+
+export const teamBrandingUpdateSchema = z.object({
+  brandDisplayName: z.string().min(1).optional(),
+  brandPrimaryColor: hexColorSchema,
+  brandSecondaryColor: hexColorSchema,
+  brandAccentColor: hexColorSchema,
+  brandLogoUrl: z.string().url().optional()
 });
 
 export const playerCreateSchema = z.object({
@@ -43,6 +58,16 @@ export const membershipCreateSchema = z.object({
   organizationId: z.string().min(1),
   userId: z.string().min(1),
   role: roleSchema
+});
+
+export const invitationCreateSchema = z.object({
+  organizationId: z.string().min(1),
+  teamId: z.string().min(1).optional(),
+  playerId: z.string().min(1).optional(),
+  email: z.string().email(),
+  role: roleSchema,
+  relationship: z.string().min(1).optional(),
+  expiresAt: z.coerce.date().optional()
 });
 
 export const readinessCheckCreateSchema = z
@@ -139,6 +164,12 @@ export const routineAssignmentCreateSchema = z
     path: ["playerId"]
   });
 
+export const routineAssignmentUpdateSchema = z.object({
+  dueDates: z.array(z.coerce.date()).optional(),
+  frequency: z.string().min(1).optional(),
+  status: z.enum(["active", "inactive", "archived"]).optional()
+});
+
 export const routineCompletionCreateSchema = z.object({
   organizationId: z.string().min(1),
   assignmentId: z.string().min(1),
@@ -188,6 +219,14 @@ export const goalCreateSchema = z.object({
   targetType: z.string().min(1),
   targetValue: z.string().min(1).optional(),
   dueDate: z.coerce.date().optional()
+});
+
+export const goalUpdateSchema = z.object({
+  metricDefinitionId: z.string().min(1).optional(),
+  targetType: z.string().min(1).optional(),
+  targetValue: z.string().min(1).optional(),
+  dueDate: z.coerce.date().nullable().optional(),
+  status: z.enum(["active", "inactive", "archived"]).optional()
 });
 
 export const teamPlayerCreateSchema = z.object({

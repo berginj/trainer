@@ -16,6 +16,7 @@ import {
   canRenderBenchmark,
   canRenderRanking,
   getAgeOnDate,
+  isParticipationMarkedAvailable,
   resolveBaseballRestDays
 } from "./safety-rules";
 
@@ -162,6 +163,14 @@ describe("alert drafts", () => {
         markedAvailable: true
       })
     ).toBeNull();
+  });
+
+  it("normalizes participation status for rest-window checks", () => {
+    expect(isParticipationMarkedAvailable("attended")).toBe(true);
+    expect(isParticipationMarkedAvailable("available")).toBe(true);
+    expect(isParticipationMarkedAvailable("modified")).toBe(false);
+    expect(isParticipationMarkedAvailable("rest day")).toBe(false);
+    expect(isParticipationMarkedAvailable("unavailable")).toBe(false);
   });
 
   it("creates red alerts when baseball daily pitch max is exceeded", () => {

@@ -22,8 +22,8 @@ export function WorkflowPage({
 }: WorkflowPageProps) {
   return (
     <main className="mx-auto min-h-screen w-full max-w-6xl px-6 py-10">
-      <Link className="text-sm font-bold text-[color:var(--accent)]" href="/">
-        Back to cockpit
+      <Link className="text-sm font-bold text-[color:var(--accent)]" href="/workflows">
+        Back to internal cockpit
       </Link>
       <section className="mt-6 rounded-[2rem] border border-[color:var(--accent-strong)]/15 bg-[color:var(--panel)]/90 p-8 shadow-xl shadow-black/10">
         <p className="text-sm font-bold uppercase tracking-[0.25em] text-[color:var(--accent)]">{eyebrow}</p>

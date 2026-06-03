@@ -66,13 +66,19 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: E2E smoke tests
+        run: npm run test:e2e
+
       - name: Audit dependencies
         run: npm audit --audit-level=moderate
 
   build-image:
     name: Build And Push Image
     runs-on: ubuntu-latest
-    needs: verify
+    needs: deploy-infra
     environment: ${{ inputs.environment }}
     outputs:
       image: ${{ steps.image.outputs.image }}
@@ -110,7 +116,7 @@ jobs:
   deploy-infra:
     name: Deploy Infrastructure
     runs-on: ubuntu-latest
-    needs: build-image
+    needs: verify
     environment: ${{ inputs.environment }}
 
     steps:
@@ -128,35 +134,63 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [ ! -f infra/main.bicep ]; then
-            echo "infra/main.bicep is not present yet. Skipping Bicep what-if."
-            exit 0
-          fi
           az deployment group what-if \
             --resource-group "$RESOURCE_GROUP" \
             --template-file infra/main.bicep \
-            --parameters "environmentName=${ENVIRONMENT_NAME}" "containerImage=${CONTAINER_IMAGE}"
+            --parameters \
+              "environmentName=${ENVIRONMENT_NAME}" \
+              "appName=${CONTAINER_APP_NAME}" \
+              "acrName=${ACR_NAME}" \
+              "postgresAdminPassword=${POSTGRES_ADMIN_PASSWORD}" \
+              "authSecret=${AUTH_SECRET}" \
+              "tokenEncryptionKey=${TOKEN_ENCRYPTION_KEY}" \
+              "googleAuthClientId=${GOOGLE_AUTH_CLIENT_ID}" \
+              "googleAuthClientSecret=${GOOGLE_AUTH_CLIENT_SECRET}" \
+              "microsoftAuthClientId=${MICROSOFT_AUTH_CLIENT_ID}" \
+              "microsoftAuthClientSecret=${MICROSOFT_AUTH_CLIENT_SECRET}"
         env:
           RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
           ENVIRONMENT_NAME: ${{ inputs.environment }}
-          CONTAINER_IMAGE: ${{ needs.build-image.outputs.image }}
+          CONTAINER_APP_NAME: ${{ vars.CONTAINER_APP_NAME }}
+          ACR_NAME: ${{ vars.ACR_NAME }}
+          POSTGRES_ADMIN_PASSWORD: ${{ secrets.POSTGRES_ADMIN_PASSWORD }}
+          AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+          TOKEN_ENCRYPTION_KEY: ${{ secrets.TOKEN_ENCRYPTION_KEY }}
+          GOOGLE_AUTH_CLIENT_ID: ${{ vars.GOOGLE_AUTH_CLIENT_ID }}
+          GOOGLE_AUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_AUTH_CLIENT_SECRET }}
+          MICROSOFT_AUTH_CLIENT_ID: ${{ vars.MICROSOFT_AUTH_CLIENT_ID }}
+          MICROSOFT_AUTH_CLIENT_SECRET: ${{ secrets.MICROSOFT_AUTH_CLIENT_SECRET }}
 
       - name: Deploy Bicep
         shell: bash
         run: |
           set -euo pipefail
-          if [ ! -f infra/main.bicep ]; then
-            echo "infra/main.bicep is not present yet. Skipping Bicep deployment."
-            exit 0
-          fi
           az deployment group create \
             --resource-group "$RESOURCE_GROUP" \
             --template-file infra/main.bicep \
-            --parameters "environmentName=${ENVIRONMENT_NAME}" "containerImage=${CONTAINER_IMAGE}"
+            --parameters \
+              "environmentName=${ENVIRONMENT_NAME}" \
+              "appName=${CONTAINER_APP_NAME}" \
+              "acrName=${ACR_NAME}" \
+              "postgresAdminPassword=${POSTGRES_ADMIN_PASSWORD}" \
+              "authSecret=${AUTH_SECRET}" \
+              "tokenEncryptionKey=${TOKEN_ENCRYPTION_KEY}" \
+              "googleAuthClientId=${GOOGLE_AUTH_CLIENT_ID}" \
+              "googleAuthClientSecret=${GOOGLE_AUTH_CLIENT_SECRET}" \
+              "microsoftAuthClientId=${MICROSOFT_AUTH_CLIENT_ID}" \
+              "microsoftAuthClientSecret=${MICROSOFT_AUTH_CLIENT_SECRET}"
         env:
           RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
           ENVIRONMENT_NAME: ${{ inputs.environment }}
-          CONTAINER_IMAGE: ${{ needs.build-image.outputs.image }}
+          CONTAINER_APP_NAME: ${{ vars.CONTAINER_APP_NAME }}
+          ACR_NAME: ${{ vars.ACR_NAME }}
+          POSTGRES_ADMIN_PASSWORD: ${{ secrets.POSTGRES_ADMIN_PASSWORD }}
+          AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+          TOKEN_ENCRYPTION_KEY: ${{ secrets.TOKEN_ENCRYPTION_KEY }}
+          GOOGLE_AUTH_CLIENT_ID: ${{ vars.GOOGLE_AUTH_CLIENT_ID }}
+          GOOGLE_AUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_AUTH_CLIENT_SECRET }}
+          MICROSOFT_AUTH_CLIENT_ID: ${{ vars.MICROSOFT_AUTH_CLIENT_ID }}
+          MICROSOFT_AUTH_CLIENT_SECRET: ${{ secrets.MICROSOFT_AUTH_CLIENT_SECRET }}
 
   migration-gate:
     name: Migration Gate

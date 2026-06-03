@@ -14,7 +14,8 @@ describe("getRequestAccessContext", () => {
         "x-org-ids": "org_1,org_2",
         "x-team-ids": "team_1",
         "x-player-ids": "player_1",
-        "x-consent-granted": "true"
+        "x-consent-granted": "true",
+        "x-consented-player-ids": "player_1"
       })
     );
 
@@ -24,7 +25,8 @@ describe("getRequestAccessContext", () => {
       userOrganizationIds: ["org_1", "org_2"],
       assignedTeamIds: ["team_1"],
       linkedPlayerIds: ["player_1"],
-      consentGranted: true
+      consentGranted: true,
+      consentGrantedPlayerIds: ["player_1"]
     });
   });
 

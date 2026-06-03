@@ -65,6 +65,26 @@ describe("authorization contracts", () => {
     ).toBe(true);
   });
 
+  it("uses per-player consent when consented player ids are present", () => {
+    expect(
+      canReadPlayer(
+        {
+          userId: "guardian_1",
+          roles: ["guardian"],
+          userOrganizationIds: ["org_a"],
+          linkedPlayerIds: ["player_1", "player_2"],
+          consentGranted: true,
+          consentGrantedPlayerIds: ["player_1"]
+        },
+        {
+          organizationId: "org_a",
+          playerId: "player_2",
+          requiresConsent: true
+        }
+      )
+    ).toBe(false);
+  });
+
   it("blocks league admins from player-level sensitive reads by default", () => {
     expect(
       canReadPlayer(
@@ -175,6 +195,26 @@ describe("authorization contracts", () => {
         }
       )
     ).toBe(true);
+  });
+
+  it("blocks assigned coaches from entering team-scoped player data without consent", () => {
+    expect(
+      canEnterPlayerData(
+        {
+          userId: "coach_1",
+          roles: ["team_coach"],
+          userOrganizationIds: ["org_a"],
+          assignedTeamIds: ["team_1"],
+          consentGranted: false
+        },
+        {
+          organizationId: "org_a",
+          teamId: "team_1",
+          playerId: "player_1",
+          requiresConsent: true
+        }
+      )
+    ).toBe(false);
   });
 
   it("blocks linked guardians from coach-only player data entry", () => {

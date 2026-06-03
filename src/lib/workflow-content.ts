@@ -1,5 +1,11 @@
 export const workflowCards = [
   {
+    href: "/signin",
+    title: "Sign in",
+    eyebrow: "Access",
+    summary: "Use invited Google or personal Microsoft accounts for guardian and coach access."
+  },
+  {
     href: "/org/setup",
     title: "Organization setup",
     eyebrow: "Admin",
@@ -34,6 +40,12 @@ export const workflowCards = [
     title: "Team dashboard",
     eyebrow: "Read model",
     summary: "Load coach-facing roster status, modify counts, and open alerts."
+  },
+  {
+    href: "/guardian/home",
+    title: "Guardian home",
+    eyebrow: "Team app",
+    summary: "Open linked player assignments and record completions, skips, and pain flags."
   },
   {
     href: "/evaluations/baseline",

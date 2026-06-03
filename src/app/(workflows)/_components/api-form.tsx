@@ -23,6 +23,10 @@ type ApiFormProps = {
 };
 
 function coerceValue(value: FormDataEntryValue, field: Field) {
+  if (field.type === "checkbox") {
+    return value === "on";
+  }
+
   if (!field.required && value === "") {
     return undefined;
   }
@@ -37,10 +41,6 @@ function coerceValue(value: FormDataEntryValue, field: Field) {
 
   if (field.type === "number") {
     return value === "" ? undefined : Number(value);
-  }
-
-  if (field.type === "checkbox") {
-    return value === "on";
   }
 
   return value.toString();

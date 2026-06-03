@@ -155,6 +155,16 @@ export function buildBaseballRestConflictAlert(input: {
   };
 }
 
+export function isParticipationMarkedAvailable(participationStatus: string): boolean {
+  const normalizedStatus = participationStatus.trim().toLowerCase();
+
+  if (!normalizedStatus) {
+    return false;
+  }
+
+  return !/\b(rest|hold|held|unavailable|out|skip|skipped|modified|limited)\b/.test(normalizedStatus);
+}
+
 export function buildBaseballPitchCountAlert(input: { age: number; pitches: number }): AlertDraft | null {
   const rest = resolveBaseballRestDays(input.age, input.pitches);
 

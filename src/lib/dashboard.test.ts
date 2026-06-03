@@ -20,6 +20,7 @@ describe("dashboard payload builders", () => {
           }
         ],
         routineAssignments: [],
+        goals: [],
         upcomingEvaluationDate: null
       }).status
     ).toBe("modify_or_hold");
@@ -37,13 +38,18 @@ describe("dashboard payload builders", () => {
           player: {
             id: "player_1",
             preferredName: "Sam"
-          }
+          },
+          guardianCount: 1,
+          consentGranted: true
         },
         {
           player: {
             id: "player_2",
             preferredName: "Ari"
-          }
+          },
+          guardianCount: 0,
+          pendingInviteCount: 1,
+          consentGranted: false
         }
       ],
       openAlerts: [
@@ -59,10 +65,13 @@ describe("dashboard payload builders", () => {
 
     expect(dashboard.rosterCount).toBe(2);
     expect(dashboard.modifyCount).toBe(1);
-    expect(dashboard.players).toContainEqual({
-      id: "player_1",
+    expect(dashboard.guardianGapCount).toBe(1);
+    expect(dashboard.consentGapCount).toBe(1);
+    expect(dashboard.players.find((player) => player.id === "player_1")).toMatchObject({
       preferredName: "Sam",
-      status: "modify_or_hold"
+      status: "modify_or_hold",
+      guardianStatus: "linked",
+      consentStatus: "active"
     });
   });
 });

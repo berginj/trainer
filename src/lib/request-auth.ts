@@ -1,4 +1,5 @@
 import { roleSchema, type Role } from "./contracts";
+import { parseSignedSession } from "./auth-session";
 
 export type RequestAccessContext = {
   userId: string;
@@ -7,6 +8,7 @@ export type RequestAccessContext = {
   assignedTeamIds: string[];
   linkedPlayerIds: string[];
   consentGranted: boolean;
+  consentGrantedPlayerIds?: string[];
 };
 
 function splitHeader(value: string | null) {
@@ -18,6 +20,14 @@ function splitHeader(value: string | null) {
 
 export function getRequestAccessContext(headers: Headers): RequestAccessContext | null {
   const userId = headers.get("x-user-id");
+
+  if (!userId) {
+    const session = parseSignedSession(headers.get("cookie"));
+
+    if (session) {
+      return session;
+    }
+  }
 
   if (!userId) {
     return null;
@@ -35,7 +45,8 @@ export function getRequestAccessContext(headers: Headers): RequestAccessContext 
     userOrganizationIds: splitHeader(headers.get("x-org-ids")),
     assignedTeamIds: splitHeader(headers.get("x-team-ids")),
     linkedPlayerIds: splitHeader(headers.get("x-player-ids")),
-    consentGranted: headers.get("x-consent-granted") === "true"
+    consentGranted: headers.get("x-consent-granted") === "true",
+    consentGrantedPlayerIds: splitHeader(headers.get("x-consented-player-ids"))
   };
 }
 

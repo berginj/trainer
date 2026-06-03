@@ -22,20 +22,35 @@ Status values:
 | Dependency health endpoint | Done | `/api/health/dependencies` reports database/storage/queue readiness. |
 | Static workflow UI | Done | Workflow pages exist for MVP areas. |
 
+## Cyclones Basketball MVP Sprint
+
+| Item | Status | Notes |
+|---|---|---|
+| Hybrid Google/Microsoft sign-in scaffold | Done | OAuth start/callback/logout routes issue signed app sessions and claim invites by email/token. |
+| Invite-based role mapping | Done | Invites can activate guardian, coach, assistant, or evaluator access and link guardians to players; roster UI now creates guardian invite links while adding players. |
+| Team branding | Done | Teams store display name, colors, and logo URL; setup/dashboard/home views expose brand metadata. |
+| Coach assignment board | Done | Basketball routines can be selected by name and assigned to a team from `/routines`. |
+| Guardian-assisted completion | Done | `/guardian/home` shows linked player assignments, consent gate, completion, skip, and pain reporting. |
+| Single Azure MVP infrastructure | Done | `infra/main.bicep` provisions the lean Azure stack for one live environment. |
+| Live Azure dev deployment | Done | `trainer-dev1` runs the app image on Azure Container Apps with Azure PostgreSQL and public health checks passing. |
+| Microsoft sign-in live path | Done | Microsoft app registration, callback URL, signed state, session creation, and role mapping are working in Azure. |
+| Bulk roster entry | Done | `/roster` loads the signed-in user's organizations/teams, can add multiple players to a team, and can create guardian invite links per player. |
+
 ## Remaining Product Work
 
 | Item | Status | Done Criteria |
 |---|---|---|
 | Interactive workflow forms | Done | Org, team, roster, baseline, readiness, workload, routines, reports, goals, consent, benchmark import, alert status, and roster assignment can be submitted from UI. |
-| Player dashboard UI | In Progress | API payload viewer exists; role-aware polished dashboard UI remains. |
-| Team dashboard UI | In Progress | API payload viewer exists; role-aware polished coach dashboard UI remains. |
-| Guardian dashboard UI | Todo | Guardian sees linked player, weekly plan, alerts, reports, and consent state. |
-| Admin dashboard UI | Todo | Admin sees metric definitions, consent gaps, alerts, audit events, and benchmark coverage. |
-| Consent workflow | In Progress | Consent can be recorded with audit events; sensitive player routes enforce consent when `AUTH_ENFORCEMENT=on`. |
+| Player dashboard UI | Done | Role-aware player dashboard shows status, readiness, routines, alerts, and next evaluation state. |
+| Team dashboard UI | Done | Coach dashboard loads assigned teams, roster status, modify counts, and open alerts without manual IDs. |
+| Report generation/view UI | Done | `/reports` loads signed-in org/team/player context, generates immutable player snapshots, lists recent reports, and `/reports/view` renders printable snapshots. |
+| Guardian dashboard UI | Done | Guardian home shows linked players, consent state, alerts, weekly completion summary, latest report links, and routine completion/skip/pain actions. |
+| Admin dashboard UI | Done | Admin summary shows roster count, consent gaps, guardian gaps, alert mix, metric coverage, weak benchmark count, alert/player drilldowns, weak benchmark rows, and recent audit events. |
+| Consent workflow | In Progress | Consent can be recorded with audit events; player-scoped guards now support per-player consent and sensitive workload, goal, report, routine, readiness, measurement, alert, and dashboard routes enforce consent when `AUTH_ENFORCEMENT=on`; DB-backed route coverage remains. |
 | Alert resolution workflow | Done | Alerts can be acknowledged/resolved with audit events. |
 | Benchmark import | Done | `POST /api/benchmarks/import` exists with validation, audit, and confidence guards. |
-| Goal workflow | In Progress | Goals can be created; update/list/dashboard rendering remains. |
-| Team roster assignment API | Done | Players can be assigned to teams from UI/API. |
+| Goal workflow | Done | `/player/profile` loads signed-in context, creates goals, lists active/archived goals, updates goal status, and player dashboards render active goals. |
+| Team roster assignment API | Done | Players can be assigned to teams from UI/API, including the bulk roster page. |
 | Google Calendar appointment sync foundation | In Progress | OAuth connection, calendar selection, event import, dedupe, appointment records, and trainer review APIs exist; production polling against Google and token refresh hardening remain. |
 | Appointment-athlete matching workflow | Done | Exact email/name matches, fuzzy recommendations, trainer confirm/create/ignore flows, and tests exist. |
 | Weather/reschedule notice workflow | In Progress | Change notices and email payload preparation exist; actual email provider delivery remains. |
@@ -46,11 +61,11 @@ Status values:
 
 | Item | Status | Done Criteria |
 |---|---|---|
-| Workload-entry alert persistence | In Progress | Workload entry creation persists baseball daily-max and softball exposure alerts; baseball rest-window availability still needs schedule context. |
+| Workload-entry alert persistence | Done | Workload entry creation persists baseball daily-max, baseball rest-window conflicts from participation status, and softball exposure alerts. |
 | Pain routine suppression | Done | Baseball/softball routine assignment is blocked while relevant pain alerts are open. |
-| Missed warm-up alert | In Progress | Rule function exists; persistence needs warm-up completion field/source data. |
-| Routine non-compliance alert | In Progress | Rule function exists; persistence needs scheduled routine compliance aggregation. |
-| Growth plus symptom alert | In Progress | Rule function exists; persistence needs height trend/performance-drop aggregation. |
+| Missed warm-up alert | Done | Skipped completions for warm-up routines aggregate over the recent window and persist a duplicate-controlled missed warm-up alert. |
+| Routine non-compliance alert | Done | Skipped routine completions aggregate by weekly bucket and persist a duplicate-controlled routine non-compliance alert after repeated missed weeks. |
+| Growth plus symptom alert | Done | Measurement capture checks height trend with recent pain or known performance drops and persists a duplicate-controlled growth context alert. |
 | Goal reset due flag | Done | Due goals create blue informational flags in recompute. |
 | Duplicate alert control | Done | Recompute avoids creating repeated open alerts for the same player/rule/source. |
 
@@ -58,37 +73,37 @@ Status values:
 
 | Item | Status | Done Criteria |
 |---|---|---|
-| Real PostgreSQL database | Blocked | `DATABASE_URL` configured locally or in Azure. |
-| Prisma migrations | In Progress | Baseline and calendar/payment migration files exist; apply them against PostgreSQL with `npm run prisma:migrate:deploy`. |
-| Seed execution | Blocked | `npm run prisma:seed` succeeds against PostgreSQL. |
+| Real PostgreSQL database | Done | Azure PostgreSQL Flexible Server `trainer-dev1-pg` is configured for the dev Container App. |
+| Prisma migrations | Done | All current migrations have been applied against Azure PostgreSQL. |
+| Seed execution | Done | `npm run prisma:seed` succeeded against Azure PostgreSQL with Cyclones MVP seed data. |
 | API integration tests | Blocked | Test database validates create/read/report/alert flows. |
 | Calendar/payment route integration tests | Blocked | PostgreSQL-backed tests validate tenant boundaries, dedupe, appointment matching persistence, notices, and payment reconciliation persistence. |
-| E2E tests | Todo | Playwright covers org setup -> roster -> readiness -> workload -> routine -> report. |
-| Accessibility checks | Todo | Key forms and dashboards pass keyboard, labels, focus, and contrast checks. |
-| Docker image validation | Blocked | Docker engine or CI runner builds and smoke-tests image. |
+| E2E tests | In Progress | Playwright covers signed-out states, mocked signed-in persona home, parent home, athlete co-view, and a mocked org setup -> roster -> readiness -> workload -> routine -> report journey in CI/release verification; DB-backed/live journey remains. |
+| Accessibility checks | In Progress | Playwright checks keyboard entry, named controls, headings, and mobile overflow across core signed-out pages; deeper form focus/contrast automation remains. |
+| Docker image validation | Done | ACR remote builds produce deployable images and public health smoke checks pass after rollout. |
 
 ## Remaining Auth, Privacy, And Security Work
 
 | Item | Status | Done Criteria |
 |---|---|---|
-| Entra External ID integration | Todo | Login, callback, session, claims, and user mapping are implemented. |
-| API authorization middleware | In Progress | Guard helpers protect sensitive player/workload/report/routine routes when `AUTH_ENFORCEMENT=on`; Entra claim mapping and full route coverage remain. |
+| Entra External ID integration | In Progress | Microsoft sign-in works through an app registration; full Entra External ID policy/tenant strategy remains. |
+| API authorization middleware | In Progress | Guard helpers protect sensitive player/workload/report/routine/goal routes when `AUTH_ENFORCEMENT=on`, including team-scoped player writes; Entra claim mapping and DB-backed route coverage remain. |
 | Cross-tenant denial tests | In Progress | Guard-level tests prove denial; DB-backed route integration tests remain blocked by PostgreSQL. |
-| Missing-consent denial tests | In Progress | Guard-level tests prove denial; DB-backed route integration tests remain blocked by PostgreSQL. |
+| Missing-consent denial tests | In Progress | Guard-level tests cover global and per-player consent denial plus team-scoped player writes; DB-backed route integration tests remain blocked by PostgreSQL. |
 | Legal/privacy review | Blocked | Child privacy and verifiable parental consent flow approved before production. |
-| Data retention/delete/export | Todo | Retention, deletion, and export behavior are implemented and documented. |
-| Google token rotation and refresh | Blocked | Azure Key Vault or production secret policy is configured; expired Google access tokens refresh without exposing token values. |
+| Data retention/delete/export | In Progress | Tested lifecycle helpers define player export sections, deletion/disconnect plans, and retention candidate counts; executable privacy routes, documentation, and DB-backed validation remain. |
+| Google token rotation and refresh | Blocked | Google OAuth clients and production secret policy are not configured; expired Google access tokens must refresh without exposing token values. |
 | Email provider integration | Blocked | Azure Communication Services or approved email provider sends prepared appointment change notices with delivery audit. |
 
 ## Remaining Azure And Operations Work
 
 | Item | Status | Done Criteria |
 |---|---|---|
-| Bicep infrastructure | Todo | ACA, ACR, PostgreSQL, Blob, Service Bus, Key Vault, App Config, Front Door/WAF, Monitor. |
-| GitHub OIDC deployment | In Progress | Manual workflow scaffold exists; live OIDC configuration remains. |
-| ACR image push | In Progress | Workflow builds and pushes immutable image tags once ACR variables are configured. |
-| Migration release gate | In Progress | Workflow gate runs `npm run prisma:migrate:deploy`; live validation waits on configured Azure `DATABASE_URL`. |
-| Smoke tests | In Progress | Workflow checks health endpoints after deploy once `APP_BASE_URL` is configured. |
+| Bicep infrastructure | In Progress | Live dev ACA, ACR, PostgreSQL, and Log Analytics resources exist; Blob, Service Bus, Key Vault, App Config, Front Door/WAF, and full Monitor still need rollout. |
+| GitHub OIDC deployment | In Progress | Deployment identity has `Contributor` on `rg-trainer-dev`; GitHub secret verification and workflow run validation remain. |
+| ACR image push | Done | ACR remote builds and pushes immutable image tags used by Container App revisions. |
+| Migration release gate | In Progress | Manual migrations succeeded against Azure PostgreSQL; workflow gate still needs GitHub validation. |
+| Smoke tests | In Progress | Manual public health and dependency checks pass; CI and release verification run local Playwright smoke tests; deployed workflow smoke gate still needs GitHub validation. |
 | Azure Monitor alerts | Todo | Error, latency, queue, DB, auth, deployment, and report failures alert operators. |
-| Runbooks | Todo | Rollback, restore, DLQ replay, secret rotation, consent incident, data exposure. |
-| Backup/restore drill | Blocked | Azure PostgreSQL exists and restore drill is validated. |
+| Runbooks | Done | `docs/runbooks.md` covers rollback, restore, DLQ replay, secret rotation, consent incident, data exposure, deployment failures, and fielding checks. |
+| Backup/restore drill | Todo | Azure PostgreSQL exists; restore drill still needs validation. |
