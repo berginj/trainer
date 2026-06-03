@@ -41,7 +41,7 @@ The dev Azure Container App is available at:
 https://trainer-dev1.greenground-5002c3bc.eastus2.azurecontainerapps.io
 ```
 
-As of June 3, 2026, the deployed service health endpoints return HTTP 200, database dependency health is OK, and Azure Container Apps is serving revision `trainer-dev1--0000023` from commit `083d5f4`. Deploys from `main` are gated behind successful CI before the dev auto-deploy workflow runs, and the dev workflow now runs Prisma migrations before app rollout.
+As of June 3, 2026, the deployed service health endpoints return HTTP 200 and database dependency health is OK. Deploys from `main` are gated behind successful CI before the dev auto-deploy workflow runs, and the dev workflow runs Prisma migrations before app rollout. Use GitHub Actions and the Azure Container Apps revision list for the current immutable revision and image tag.
 
 ## Database
 
