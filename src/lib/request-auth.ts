@@ -19,15 +19,17 @@ function splitHeader(value: string | null) {
 }
 
 export function getRequestAccessContext(headers: Headers): RequestAccessContext | null {
-  const userId = headers.get("x-user-id");
+  const session = parseSignedSession(headers.get("cookie"));
 
-  if (!userId) {
-    const session = parseSignedSession(headers.get("cookie"));
-
-    if (session) {
-      return session;
-    }
+  if (session) {
+    return session;
   }
+
+  if (!shouldTrustDevelopmentAuthHeaders()) {
+    return null;
+  }
+
+  const userId = headers.get("x-user-id");
 
   if (!userId) {
     return null;
@@ -52,6 +54,10 @@ export function getRequestAccessContext(headers: Headers): RequestAccessContext 
 
 export function shouldEnforceAuth() {
   return process.env.AUTH_ENFORCEMENT === "on";
+}
+
+function shouldTrustDevelopmentAuthHeaders() {
+  return !shouldEnforceAuth() && process.env.NODE_ENV !== "production";
 }
 
 export function getRequestActorId(headers: Headers, fallbackActorId?: string | null) {

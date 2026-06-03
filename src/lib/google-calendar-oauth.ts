@@ -1,9 +1,10 @@
-import { createCipheriv, createDecipheriv, createHmac, randomBytes, randomUUID, timingSafeEqual } from "crypto";
+import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from "crypto";
 
 export const GOOGLE_CALENDAR_SCOPES = [
   "https://www.googleapis.com/auth/calendar.calendarlist.readonly",
   "https://www.googleapis.com/auth/calendar.events.readonly"
 ] as const;
+export const GOOGLE_CALENDAR_OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
 
 type GoogleTokenResponse = {
   access_token?: string;
@@ -107,6 +108,7 @@ export function buildGoogleCalendarAuthUrl(input: {
   const state = encodeSignedState({
     organizationId: input.organizationId,
     trainerUserId: input.trainerUserId,
+    issuedAt: Date.now(),
     nonce: randomUUID()
   });
   const params = new URLSearchParams({
@@ -126,19 +128,29 @@ export function buildGoogleCalendarAuthUrl(input: {
   };
 }
 
+export function hashGoogleCalendarState(state: string) {
+  return createHash("sha256").update(state).digest("hex");
+}
+
 export function decodeGoogleCalendarState(state: string) {
   const parsed = verifySignedState(state) as {
     organizationId?: string;
     trainerUserId?: string;
+    issuedAt?: number;
   };
 
   if (!parsed.organizationId || !parsed.trainerUserId) {
     throw new Error("Google OAuth state is missing organization or trainer scope.");
   }
 
+  if (!parsed.issuedAt || Date.now() - parsed.issuedAt > GOOGLE_CALENDAR_OAUTH_STATE_TTL_MS) {
+    throw new Error("Google OAuth state is expired.");
+  }
+
   return {
     organizationId: parsed.organizationId,
-    trainerUserId: parsed.trainerUserId
+    trainerUserId: parsed.trainerUserId,
+    expiresAt: new Date(parsed.issuedAt + GOOGLE_CALENDAR_OAUTH_STATE_TTL_MS)
   };
 }
 

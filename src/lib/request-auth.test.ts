@@ -1,12 +1,16 @@
 import { afterEach, describe, expect, it } from "vitest";
+import { createSignedSessionCookie } from "./auth-session";
 import { getRequestAccessContext, getRequestActorId } from "./request-auth";
 
 describe("getRequestAccessContext", () => {
   afterEach(() => {
     delete process.env.AUTH_ENFORCEMENT;
+    delete process.env.AUTH_SECRET;
   });
 
-  it("parses request access context from development headers", () => {
+  it("parses request access context from local development headers when auth is disabled", () => {
+    process.env.AUTH_ENFORCEMENT = "off";
+
     const context = getRequestAccessContext(
       new Headers({
         "x-user-id": "user_1",
@@ -30,6 +34,42 @@ describe("getRequestAccessContext", () => {
     });
   });
 
+  it("ignores development identity headers when auth enforcement is on", () => {
+    process.env.AUTH_ENFORCEMENT = "on";
+
+    expect(
+      getRequestAccessContext(
+        new Headers({
+          "x-user-id": "user_1",
+          "x-roles": "platform_admin",
+          "x-org-ids": "org_1"
+        })
+      )
+    ).toBeNull();
+  });
+
+  it("uses signed sessions when auth enforcement is on", () => {
+    process.env.AUTH_ENFORCEMENT = "on";
+    process.env.AUTH_SECRET = "test-auth-secret";
+    const cookie = createSignedSessionCookie({
+      userId: "user_1",
+      roles: ["org_admin"],
+      userOrganizationIds: ["org_1"],
+      assignedTeamIds: [],
+      linkedPlayerIds: [],
+      consentGranted: true
+    });
+
+    expect(getRequestAccessContext(new Headers({ cookie }))).toEqual({
+      userId: "user_1",
+      roles: ["org_admin"],
+      userOrganizationIds: ["org_1"],
+      assignedTeamIds: [],
+      linkedPlayerIds: [],
+      consentGranted: true
+    });
+  });
+
   it("returns null when no identity is present", () => {
     expect(getRequestAccessContext(new Headers())).toBeNull();
   });
@@ -48,14 +88,19 @@ describe("getRequestAccessContext", () => {
 
   it("uses authenticated actor when auth enforcement is on", () => {
     process.env.AUTH_ENFORCEMENT = "on";
+    process.env.AUTH_SECRET = "test-auth-secret";
+    const cookie = createSignedSessionCookie({
+      userId: "user_1",
+      roles: ["org_admin"],
+      userOrganizationIds: ["org_1"],
+      assignedTeamIds: [],
+      linkedPlayerIds: [],
+      consentGranted: true
+    });
 
     expect(
       getRequestActorId(
-        new Headers({
-          "x-user-id": "user_1",
-          "x-roles": "org_admin",
-          "x-org-ids": "org_1"
-        }),
+        new Headers({ cookie }),
         "body_user"
       )
     ).toBe("user_1");

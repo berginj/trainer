@@ -1,9 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createOAuthStateCookie,
+  createSignedSessionCookie,
   normalizeOAuthReturnTo,
   oauthStateCookieName,
-  parseOAuthState
+  parseOAuthState,
+  parseSignedSession
 } from "./auth-session";
 
 describe("OAuth session helpers", () => {
@@ -66,5 +68,37 @@ describe("OAuth session helpers", () => {
 
   it("uses the expected state cookie name", () => {
     expect(createOAuthStateCookie({ provider: "google" }).cookie).toContain(`${oauthStateCookieName}=`);
+  });
+
+  it("parses signed sessions before their server-side expiry", () => {
+    const cookie = createSignedSessionCookie({
+      userId: "user_1",
+      roles: ["org_admin"],
+      userOrganizationIds: ["org_1"],
+      assignedTeamIds: [],
+      linkedPlayerIds: [],
+      consentGranted: true
+    });
+
+    expect(parseSignedSession(cookie)).toMatchObject({
+      userId: "user_1",
+      roles: ["org_admin"],
+      userOrganizationIds: ["org_1"]
+    });
+  });
+
+  it("rejects signed sessions after their server-side expiry", () => {
+    const cookie = createSignedSessionCookie({
+      userId: "user_1",
+      roles: ["org_admin"],
+      userOrganizationIds: ["org_1"],
+      assignedTeamIds: [],
+      linkedPlayerIds: [],
+      consentGranted: true
+    });
+
+    vi.setSystemTime(new Date("2026-06-17T12:00:01.000Z"));
+
+    expect(parseSignedSession(cookie)).toBeNull();
   });
 });

@@ -2,12 +2,14 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
 import { NextRequest } from "next/server";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { createSignedSessionCookie } from "../../src/lib/auth-session";
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const describeWithDatabase = databaseUrl ? describe : describe.skip;
 const runId = `route_${Date.now()}`;
 
 process.env.AUTH_ENFORCEMENT = "on";
+process.env.AUTH_SECRET = "test-auth-secret";
 
 function accessHeaders(input: {
   userId: string;
@@ -20,13 +22,17 @@ function accessHeaders(input: {
 }) {
   return new Headers({
     "content-type": "application/json",
-    "x-user-id": input.userId,
-    "x-roles": input.roles.join(","),
-    "x-org-ids": input.organizationIds.join(","),
-    "x-team-ids": input.teamIds?.join(",") ?? "",
-    "x-player-ids": input.playerIds?.join(",") ?? "",
-    "x-consent-granted": input.consentGranted ? "true" : "false",
-    "x-consented-player-ids": input.consentedPlayerIds?.join(",") ?? ""
+    cookie: createSignedSessionCookie({
+      userId: input.userId,
+      roles: input.roles as Array<
+        "platform_admin" | "org_admin" | "league_admin" | "team_coach" | "assistant_coach" | "guardian" | "player" | "evaluator"
+      >,
+      userOrganizationIds: input.organizationIds,
+      assignedTeamIds: input.teamIds ?? [],
+      linkedPlayerIds: input.playerIds ?? [],
+      consentGranted: input.consentGranted ?? false,
+      consentGrantedPlayerIds: input.consentedPlayerIds
+    })
   });
 }
 
@@ -149,6 +155,7 @@ describeWithDatabase("DB-backed route authorization", () => {
 
   afterAll(async () => {
     delete process.env.AUTH_ENFORCEMENT;
+    delete process.env.AUTH_SECRET;
 
     if (!prisma) {
       return;

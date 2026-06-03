@@ -5,7 +5,8 @@ import {
   decodeGoogleCalendarState,
   encryptSecret,
   exchangeGoogleCalendarCode,
-  GOOGLE_CALENDAR_SCOPES
+  GOOGLE_CALENDAR_SCOPES,
+  hashGoogleCalendarState
 } from "@/lib/google-calendar-oauth";
 
 export const runtime = "nodejs";
@@ -18,10 +19,38 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ code: "VALIDATION_FAILED", message: "Google callback requires code and state." }, { status: 400 });
   }
 
-  const scopedState = decodeGoogleCalendarState(state);
+  let scopedState: ReturnType<typeof decodeGoogleCalendarState>;
+
+  try {
+    scopedState = decodeGoogleCalendarState(state);
+  } catch (error) {
+    return NextResponse.json(
+      { code: "VALIDATION_FAILED", message: error instanceof Error ? error.message : "Google OAuth state is invalid." },
+      { status: 400 }
+    );
+  }
+
+  const prisma = getPrisma();
+  const consumedState = await prisma.oAuthState.updateMany({
+    where: {
+      provider: "google_calendar",
+      stateHash: hashGoogleCalendarState(state),
+      organizationId: scopedState.organizationId,
+      trainerUserId: scopedState.trainerUserId,
+      expiresAt: { gt: new Date() },
+      consumedAt: null
+    },
+    data: {
+      consumedAt: new Date()
+    }
+  });
+
+  if (consumedState.count !== 1) {
+    return NextResponse.json({ code: "VALIDATION_FAILED", message: "Google OAuth state is invalid." }, { status: 400 });
+  }
+
   const redirectUri = new URL("/api/integrations/google-calendar/callback", request.nextUrl.origin).toString();
   const token = await exchangeGoogleCalendarCode({ code, redirectUri });
-  const prisma = getPrisma();
   const integration = await prisma.externalCalendarIntegration.create({
     data: {
       organizationId: scopedState.organizationId,
@@ -47,4 +76,3 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({ integrationId: integration.id, status: integration.status });
 }
-

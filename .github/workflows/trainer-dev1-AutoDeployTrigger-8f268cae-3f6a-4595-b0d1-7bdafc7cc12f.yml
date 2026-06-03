@@ -59,7 +59,7 @@ jobs:
             --image "$ACR_LOGIN_SERVER/$CONTAINER_APP_NAME:${DEPLOY_SHA}" \
             --set-env-vars \
               NODE_ENV=production \
-              AUTH_ENFORCEMENT=off \
+              AUTH_ENFORCEMENT=on \
               DATABASE_URL=secretref:database-url \
               AUTH_SECRET=secretref:auth-secret \
               TOKEN_ENCRYPTION_KEY=secretref:token-encryption-key \

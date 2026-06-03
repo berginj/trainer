@@ -48,6 +48,7 @@ Set these as GitHub environment secrets:
 ## Current Infrastructure Coverage
 
 - The application runtime is Node.js 24. Docker uses `node:24-alpine`, CI uses `actions/setup-node` with Node 24, and GitHub JavaScript actions opt into Node 24 with `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24`.
+- Deployed Container App revisions run with `AUTH_ENFORCEMENT=on`; local development headers are only for non-production runs with enforcement disabled.
 - `infra/main.bicep` provisions the single-environment MVP stack: ACR, Container Apps, PostgreSQL, Key Vault, Log Analytics, and Application Insights.
 - Prisma migrations exist, so the migration gate runs `npm run prisma:migrate:deploy` when `DATABASE_URL` is configured.
 - Docker image validation happens in GitHub-hosted runners and ACR remote builds.

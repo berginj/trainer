@@ -45,7 +45,7 @@ Use this when the latest revision is unhealthy or a production workflow is broke
 
 ```powershell
 $image = "<previous healthy image>"
-az containerapp update --name trainer-dev1 --resource-group rg-trainer-dev --image $image --set-env-vars NODE_ENV=production AUTH_ENFORCEMENT=off DATABASE_URL=secretref:database-url AUTH_SECRET=secretref:auth-secret TOKEN_ENCRYPTION_KEY=secretref:token-encryption-key TOKEN_ENCRYPTION_KEY_VERSION=v1 MICROSOFT_AUTH_CLIENT_ID=ccdda902-1f14-4bb8-a651-64ceb12e9f1d MICROSOFT_AUTH_CLIENT_SECRET=secretref:microsoft-auth-client-secret SEED_CYCLONES_MVP=off --min-replicas 1 --max-replicas 1
+az containerapp update --name trainer-dev1 --resource-group rg-trainer-dev --image $image --set-env-vars NODE_ENV=production AUTH_ENFORCEMENT=on DATABASE_URL=secretref:database-url AUTH_SECRET=secretref:auth-secret TOKEN_ENCRYPTION_KEY=secretref:token-encryption-key TOKEN_ENCRYPTION_KEY_VERSION=v1 MICROSOFT_AUTH_CLIENT_ID=ccdda902-1f14-4bb8-a651-64ceb12e9f1d MICROSOFT_AUTH_CLIENT_SECRET=secretref:microsoft-auth-client-secret SEED_CYCLONES_MVP=off --min-replicas 1 --max-replicas 1
 ```
 
 ## Database Restore Drill
@@ -75,7 +75,7 @@ Use when a guardian reports incorrect consent or a player appears accessible wit
 1. Record the player, guardian email, timestamp, and route involved.
 2. Check `/admin` for consent gaps and recent audit events.
 3. Revoke or correct consent records directly only after confirming the guardian/player relationship.
-4. Keep `AUTH_ENFORCEMENT=off` only for controlled dev testing. Before production, turn enforcement on in a staging environment and verify guardian, coach, and admin paths.
+4. Keep `AUTH_ENFORCEMENT=on` for deployed environments. Use local-only development headers only with `AUTH_ENFORCEMENT=off` and never on a public revision.
 5. Document the incident and follow legal/privacy review before production use with children.
 
 ## Data Exposure Incident

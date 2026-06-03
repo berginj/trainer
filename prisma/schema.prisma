@@ -387,6 +387,20 @@ model AuthIdentity {
   @@index([email])
 }
 
+model OAuthState {
+  id             String    @id @default(cuid())
+  provider       String
+  stateHash      String    @unique
+  organizationId String?
+  trainerUserId  String?
+  expiresAt      DateTime
+  consumedAt     DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@index([provider, organizationId, trainerUserId, consumedAt])
+  @@index([expiresAt])
+}
+
 model Invitation {
   id             String           @id @default(cuid())
   organizationId String

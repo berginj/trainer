@@ -34,6 +34,8 @@ Imported events preserve Google calendar ID, event ID, title, start/end time, lo
 
 Cancelled Google events update the appointment status to `cancelled`.
 
+Google Calendar OAuth state is signed, expires after 10 minutes, and is stored by SHA-256 hash until callback consumption so replayed callback URLs are rejected.
+
 Future webhook extension point: add Google Calendar watch channels against selected calendars and route notifications into the same event import service. The polling/import path remains the source of normalization and dedupe behavior.
 
 ## Athlete Matching Behavior

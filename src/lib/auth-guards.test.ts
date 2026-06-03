@@ -8,10 +8,34 @@ import {
   requirePlayerDataEntryAccess,
   requireTenantAccess
 } from "./auth-guards";
+import { createSignedSessionCookie } from "./auth-session";
+
+function sessionHeaders(input: {
+  userId: string;
+  roles: Array<"platform_admin" | "org_admin" | "league_admin" | "team_coach" | "assistant_coach" | "guardian" | "player" | "evaluator">;
+  organizationIds: string[];
+  teamIds?: string[];
+  playerIds?: string[];
+  consentGranted?: boolean;
+  consentedPlayerIds?: string[];
+}) {
+  return new Headers({
+    cookie: createSignedSessionCookie({
+      userId: input.userId,
+      roles: input.roles,
+      userOrganizationIds: input.organizationIds,
+      assignedTeamIds: input.teamIds ?? [],
+      linkedPlayerIds: input.playerIds ?? [],
+      consentGranted: input.consentGranted ?? false,
+      consentGrantedPlayerIds: input.consentedPlayerIds
+    })
+  });
+}
 
 describe("auth guards", () => {
   afterEach(() => {
     delete process.env.AUTH_ENFORCEMENT;
+    delete process.env.AUTH_SECRET;
   });
 
   it("does not enforce auth when disabled", () => {
@@ -34,16 +58,32 @@ describe("auth guards", () => {
     expect(response?.status).toBe(403);
   });
 
-  it("blocks missing consent for sensitive player reads", () => {
+  it("does not authorize spoofed development headers when enforcement is on", () => {
     process.env.AUTH_ENFORCEMENT = "on";
 
-    const response = requirePlayerAccess(
+    const response = requireOrganizationManagementAccess(
       new Headers({
-        "x-user-id": "guardian_1",
-        "x-roles": "guardian",
-        "x-org-ids": "org_1",
-        "x-player-ids": "player_1",
-        "x-consent-granted": "false"
+        "x-user-id": "org_admin_1",
+        "x-roles": "org_admin",
+        "x-org-ids": "org_1"
+      }),
+      "org_1"
+    );
+
+    expect(response?.status).toBe(403);
+  });
+
+  it("blocks missing consent for sensitive player reads", () => {
+    process.env.AUTH_ENFORCEMENT = "on";
+    process.env.AUTH_SECRET = "test-auth-secret";
+
+    const response = requirePlayerAccess(
+      sessionHeaders({
+        userId: "guardian_1",
+        roles: ["guardian"],
+        organizationIds: ["org_1"],
+        playerIds: ["player_1"],
+        consentGranted: false
       }),
       {
         organizationId: "org_1",
@@ -57,15 +97,16 @@ describe("auth guards", () => {
 
   it("allows consented linked guardian access", () => {
     process.env.AUTH_ENFORCEMENT = "on";
+    process.env.AUTH_SECRET = "test-auth-secret";
 
     expect(
       requirePlayerAccess(
-        new Headers({
-          "x-user-id": "guardian_1",
-          "x-roles": "guardian",
-          "x-org-ids": "org_1",
-          "x-player-ids": "player_1",
-          "x-consent-granted": "true"
+        sessionHeaders({
+          userId: "guardian_1",
+          roles: ["guardian"],
+          organizationIds: ["org_1"],
+          playerIds: ["player_1"],
+          consentGranted: true
         }),
         {
           organizationId: "org_1",
@@ -78,15 +119,16 @@ describe("auth guards", () => {
 
   it("blocks access to a linked player without that player's consent", () => {
     process.env.AUTH_ENFORCEMENT = "on";
+    process.env.AUTH_SECRET = "test-auth-secret";
 
     const response = requirePlayerAccess(
-      new Headers({
-        "x-user-id": "guardian_1",
-        "x-roles": "guardian",
-        "x-org-ids": "org_1",
-        "x-player-ids": "player_1,player_2",
-        "x-consent-granted": "true",
-        "x-consented-player-ids": "player_1"
+      sessionHeaders({
+        userId: "guardian_1",
+        roles: ["guardian"],
+        organizationIds: ["org_1"],
+        playerIds: ["player_1", "player_2"],
+        consentGranted: true,
+        consentedPlayerIds: ["player_1"]
       }),
       {
         organizationId: "org_1",
@@ -100,12 +142,13 @@ describe("auth guards", () => {
 
   it("requires platform admin for platform-only actions", () => {
     process.env.AUTH_ENFORCEMENT = "on";
+    process.env.AUTH_SECRET = "test-auth-secret";
 
     const response = requirePlatformAdmin(
-      new Headers({
-        "x-user-id": "org_admin_1",
-        "x-roles": "org_admin",
-        "x-org-ids": "org_1"
+      sessionHeaders({
+        userId: "org_admin_1",
+        roles: ["org_admin"],
+        organizationIds: ["org_1"]
       })
     );
 
@@ -114,13 +157,14 @@ describe("auth guards", () => {
 
   it("allows org admins to manage their organization", () => {
     process.env.AUTH_ENFORCEMENT = "on";
+    process.env.AUTH_SECRET = "test-auth-secret";
 
     expect(
       requireOrganizationManagementAccess(
-        new Headers({
-          "x-user-id": "org_admin_1",
-          "x-roles": "org_admin",
-          "x-org-ids": "org_1"
+        sessionHeaders({
+          userId: "org_admin_1",
+          roles: ["org_admin"],
+          organizationIds: ["org_1"]
         }),
         "org_1"
       )
@@ -129,14 +173,15 @@ describe("auth guards", () => {
 
   it("allows linked guardians to manage their own consent records", () => {
     process.env.AUTH_ENFORCEMENT = "on";
+    process.env.AUTH_SECRET = "test-auth-secret";
 
     expect(
       requireConsentRecordAccess(
-        new Headers({
-          "x-user-id": "guardian_1",
-          "x-roles": "guardian",
-          "x-org-ids": "org_1",
-          "x-player-ids": "player_1"
+        sessionHeaders({
+          userId: "guardian_1",
+          roles: ["guardian"],
+          organizationIds: ["org_1"],
+          playerIds: ["player_1"]
         }),
         {
           organizationId: "org_1",
@@ -149,14 +194,15 @@ describe("auth guards", () => {
 
   it("blocks linked guardians from staff-only player data entry", () => {
     process.env.AUTH_ENFORCEMENT = "on";
+    process.env.AUTH_SECRET = "test-auth-secret";
 
     const response = requirePlayerDataEntryAccess(
-      new Headers({
-        "x-user-id": "guardian_1",
-        "x-roles": "guardian",
-        "x-org-ids": "org_1",
-        "x-player-ids": "player_1",
-        "x-consent-granted": "true"
+      sessionHeaders({
+        userId: "guardian_1",
+        roles: ["guardian"],
+        organizationIds: ["org_1"],
+        playerIds: ["player_1"],
+        consentGranted: true
       }),
       {
         organizationId: "org_1",
@@ -170,14 +216,15 @@ describe("auth guards", () => {
 
   it("blocks team-scoped player data entry when consent is missing", () => {
     process.env.AUTH_ENFORCEMENT = "on";
+    process.env.AUTH_SECRET = "test-auth-secret";
 
     const response = requirePlayerDataEntryAccess(
-      new Headers({
-        "x-user-id": "coach_1",
-        "x-roles": "team_coach",
-        "x-org-ids": "org_1",
-        "x-team-ids": "team_1",
-        "x-consent-granted": "false"
+      sessionHeaders({
+        userId: "coach_1",
+        roles: ["team_coach"],
+        organizationIds: ["org_1"],
+        teamIds: ["team_1"],
+        consentGranted: false
       }),
       {
         organizationId: "org_1",
@@ -192,12 +239,13 @@ describe("auth guards", () => {
 
   it("blocks trainer impersonation for organization-scoped actions", () => {
     process.env.AUTH_ENFORCEMENT = "on";
+    process.env.AUTH_SECRET = "test-auth-secret";
 
     const response = requireOrganizationUserAction(
-      new Headers({
-        "x-user-id": "trainer_1",
-        "x-roles": "evaluator",
-        "x-org-ids": "org_1"
+      sessionHeaders({
+        userId: "trainer_1",
+        roles: ["evaluator"],
+        organizationIds: ["org_1"]
       }),
       {
         organizationId: "org_1",

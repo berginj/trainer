@@ -4,6 +4,7 @@ import type { RequestAccessContext } from "./request-auth";
 
 export const sessionCookieName = "trainer_session";
 export const oauthStateCookieName = "trainer_oauth_state";
+const sessionMaxAgeSeconds = 60 * 60 * 24 * 14;
 
 type OAuthProfile = {
   provider: AuthProvider;
@@ -101,7 +102,7 @@ export function createSignedSessionCookie(context: RequestAccessContext) {
     })
   );
 
-  return serializeCookie(sessionCookieName, `${payload}.${sign(payload)}`, 60 * 60 * 24 * 14);
+  return serializeCookie(sessionCookieName, `${payload}.${sign(payload)}`, sessionMaxAgeSeconds);
 }
 
 export function clearSessionCookie() {
@@ -122,13 +123,25 @@ export function parseSignedSession(cookieHeader: string | null): RequestAccessCo
   }
 
   try {
-    const parsed = JSON.parse(base64UrlDecode(payload)) as RequestAccessContext;
+    const parsed = JSON.parse(base64UrlDecode(payload)) as RequestAccessContext & { issuedAt?: number };
 
-    if (!parsed.userId || !Array.isArray(parsed.roles)) {
+    if (!parsed.userId || !Array.isArray(parsed.roles) || !parsed.issuedAt) {
       return null;
     }
 
-    return parsed;
+    if (Date.now() - parsed.issuedAt > sessionMaxAgeSeconds * 1000) {
+      return null;
+    }
+
+    return {
+      userId: parsed.userId,
+      roles: parsed.roles,
+      userOrganizationIds: parsed.userOrganizationIds,
+      assignedTeamIds: parsed.assignedTeamIds,
+      linkedPlayerIds: parsed.linkedPlayerIds,
+      consentGranted: parsed.consentGranted,
+      consentGrantedPlayerIds: parsed.consentGrantedPlayerIds
+    };
   } catch {
     return null;
   }
